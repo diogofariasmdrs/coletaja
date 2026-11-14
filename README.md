@@ -1,4 +1,4 @@
-# ColetaJá
+# ColetaJá v0.2.0 · Mapa do morador
 
 Aplicação demonstrativa em HTML, CSS e módulos JavaScript, com Three.js, GSAP, ScrollTrigger, Lenis e Google Maps. A frota e os horários são simulados.
 
@@ -29,3 +29,20 @@ O centro inicial fica em **−3.739368338, −38.56655153**, no entorno da Rua D
 Sem chave aparece o aviso de configuração. Para falha de carregamento, confira conexão e restrições. Se o console mostrar OverQuotaMapError, aguarde a renovação da cota. Alguns erros do mapa base só informam o código no console. A inclinação depende de suporte vetorial. [Diagnóstico do Google](https://developers.google.com/maps/documentation/javascript/error-messages).
 
 O Git ignora .env.local. Uma chave VITE usada no navegador fica visível nas requisições: restrinja o uso aos endereços e à API necessários. Para produção, configure credenciais e Map ID próprios e revise faturamento e limites antes de publicar. Use a Demo Key apenas em protótipos.
+
+## Consulta por endereço
+
+Pesquise **EEEP Joaquim Nogueira** para ver um endereço próximo da frota ou **Av. Beira Mar** para experimentar uma região fora dos trajetos. A consulta por rua usa um índice local com 52.304 trechos de Fortaleza. O número identifica uma faixa do cadastro. O ponto representa o centro aproximado do trecho. A escola usa sua coordenada cadastrada.
+
+Em **Escolher ponto no mapa**, toque em vários locais e use **Concluir** para guardar o último ponto na página. A cobertura demonstrativa considera até 180 metros em linha reta até o trajeto. Os três veículos são fictícios.
+
+A consulta local funciona sem chave. O mapa interativo requer internet e a chave configurada em `.env.local`. A opção `VITE_ENABLE_GEOCODING` vem desligada. Só a ative para consultas sem correspondência local se a sua configuração do Google permitir esse serviço e você tiver revisado a cobrança.
+
+### Fontes
+
+- Cadastro de ruas da Prefeitura de Fortaleza / SEFIN, CC BY. Índice adaptado a partir das coordenadas e das faixas de numeração dos trechos. [Dados abertos da Prefeitura](https://dados.fortaleza.ce.gov.br/dataset/logradouros-fortaleza)
+- Geometrias viárias © OpenStreetMap contributors, ODbL. Cada rota em `js/maps/demoRoutes.js` lista as vias de origem em `osmWays`. [Licença do OpenStreetMap](https://www.openstreetmap.org/copyright)
+
+### Validar
+
+Execute `npm test` para conferir os cálculos de cobertura, a posição da frota e a busca por rua. Depois execute `npm run build` para gerar o site em `dist/`.

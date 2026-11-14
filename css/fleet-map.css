@@ -1,0 +1,28 @@
+.fleet-pin {
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  min-width: 48px;
+  min-height: 48px;
+  filter: drop-shadow(0 2px 2px #132e243d);
+  cursor: pointer;
+}
+.fleet-pin svg {
+  width: 68px;
+  height: 46px;
+}
+.fleet-pin[data-westbound="true"] svg {
+  transform: scaleX(-1);
+}
+.fleet-pin b {
+  color: white;
+  background: #1a392e;
+  border: 1px solid white;
+  border-radius: 4px;
+  font: 700 11px/1.4 system-ui;
+  padding: 1px 6px;
+  letter-spacing: .04em;
+}
+.fleet-pin[data-selected="true"] b {
+  outline: 2px solid var(--vehicle);
+}

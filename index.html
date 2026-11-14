@@ -86,19 +86,24 @@
         </header>
         <div class="tracking-body">
           <aside class="tracking-tools">
+            <a class="address-link" href="#percurso">Consultar meu endereço ↓</a>
+            <button class="fleet-toggle" aria-expanded="false" aria-controls="fleet-controls">Veículos e rotas</button>
+            <div id="fleet-controls">
             <label
               >Buscar caminhão ou rota<input
                 type="search"
-                placeholder="Ex.: CJ-01 ou Parquelândia"
+                placeholder="Ex.: CJ-01 ou RT-02"
                 value=""
             /></label>
             <div class="truck-list"></div>
             <div class="tracking-detail" aria-live="polite">
               <b>CJ-01 · Em coleta</b>
-              <p>Entorno da escola · Parada simulada às 08:15</p>
+              <p>RT-01 · Rua Moreira de Sousa</p>
             </div>
+            </div>
+            <p class="route-key"><b>━</b> Percorrido · <b>┄</b> Previsto<br>Traçados © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></p>
           </aside>
-          <div class="map-space">
+          <div class="map-space" tabindex="-1">
             <div class="google-surface" aria-label="Mapa de Fortaleza"></div>
             <div class="map-message" role="status">
               <strong>Google Maps aguarda configuração</strong>
@@ -114,41 +119,31 @@
       <div class="city-story">
         <section id="percurso" class="neighborhood">
           <div class="route-query">
-            <h2>Como acompanhar a coleta no seu bairro</h2>
-            <p>
-              Escolha uma rota e um ponto de coleta para saber se o caminhão já
-              passou.
-            </p>
-            <label for="resident-route">Região ou rota demonstrativa</label
-            ><select id="resident-route"></select
-            ><label for="resident-stop">Ponto de coleta</label
-            ><select id="resident-stop"></select>
-          </div>
-          <div class="resident-report" aria-live="polite">
-            <div class="report-head">
-              <span>Boletim da rota</span><span id="report-ref"></span>
+            <h2>Consulte a coleta na sua rua</h2>
+            <p>Pesquise um endereço de Fortaleza para consultar as rotas demonstrativas disponíveis na região.</p>
+            <form id="address-form">
+              <label for="address-input">Endereço em Fortaleza</label>
+              <div class="address-field"><input id="address-input" type="search" placeholder="Ex.: Rua Moreira de Sousa, 327" required maxlength="220"><button>Buscar</button></div>
+            </form>
+            <div class="address-options">
+              <button id="address-locate">Usar minha localização</button>
+              <button id="address-pick">Escolher ponto no mapa</button>
             </div>
-            <h3 id="stop-state"></h3>
-            <p id="resident-tip"></p>
-            <ol id="stop-line" aria-label="Sequência de paradas"></ol>
-            <dl class="report-facts">
-              <div>
-                <dt>Veículo</dt>
-                <dd id="report-truck"></dd>
-              </div>
-              <div>
-                <dt>Coleta na rota</dt>
-                <dd id="report-progress"></dd>
-              </div>
-              <div>
-                <dt>Previsão da rota</dt>
-                <dd id="report-time"></dd>
-              </div>
+            <p id="address-help"></p>
+            <small class="address-source">Base de ruas · <a href="https://dados.fortaleza.ce.gov.br/dataset/logradouros-fortaleza">Prefeitura de Fortaleza / SEFIN</a></small>
+          </div>
+          <div class="resident-report" aria-live="polite" aria-atomic="true">
+            <div class="report-head"><span>Consulta de proximidade</span><span>Simulação</span></div>
+            <h3 id="address-status">Qual rua você quer consultar?</h3>
+            <p id="address-result">Consulte a distância entre um endereço e as rotas da demonstração.</p>
+            <div id="street-choices"></div>
+            <dl class="report-facts" id="coverage-facts" hidden>
+              <div><dt>Veículo</dt><dd id="coverage-vehicle"></dd></div>
+              <div><dt>Percurso simulado</dt><dd id="coverage-progress"></dd></div>
+              <div><dt>Distância até a rota</dt><dd id="coverage-distance"></dd></div>
             </dl>
-            <p class="report-note">
-              Dados simulados. O horário informado se refere à parada da rota; o
-              boletim não prevê a passagem em cada rua.
-            </p>
+            <button id="address-view" hidden>Ver no mapa</button>
+            <p class="report-note">Cobertura demonstrativa até 180 m do trajeto. A distância é em linha reta. O atendimento real depende da operação municipal.</p>
           </div>
         </section>
         <section

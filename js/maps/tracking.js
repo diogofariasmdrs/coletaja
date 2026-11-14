@@ -1,4 +1,7 @@
-import {createFleetMap} from "./fleetMap.js";
+import { operations } from "./operations.js";
+import { splitRoute } from "./geometry.js";
+import { setupAddress } from "./address.js";
+import { createFleetMap } from "./fleetMap.js";
 import { fleet, school } from "./demoRoutes.js";
 import { loadMaps } from "./googleMaps.js";
 export function setupTracking() {
@@ -8,30 +11,51 @@ export function setupTracking() {
     detail = section.querySelector(".tracking-detail");
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim(),
     mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
-  let map;
+  let map,
+    layers,
+    selected = fleet[0].id;
+  const address = setupAddress(select);
+  const toggle = section.querySelector(".fleet-toggle");
+  toggle.onclick = () =>
+    toggle.setAttribute(
+      "aria-expanded",
+      String(toggle.getAttribute("aria-expanded") !== "true"),
+    );
   const list = section.querySelector(".truck-list");
   const buttons = fleet.map((vehicle, index) => {
     const button = document.createElement("button");
     const id = document.createElement("b");
     const name = document.createElement("span");
     id.textContent = vehicle.id;
-    name.textContent = vehicle.name;
+    name.textContent = operations[index].route + " · " + vehicle.name;
     button.append(id, name);
     button.setAttribute("aria-pressed", index === 0);
     list.append(button);
     return button;
   });
-  function select(id) {
+  function select(id, focus = true) {
+    selected = id;
+    const row = operations.find((r) => r.vehicle === id);
     const vehicle = fleet.find((v) => v.id === id);
     buttons.forEach((b) =>
       b.setAttribute("aria-pressed", b.querySelector("b").textContent === id),
     );
     detail.querySelector("b").textContent = id + " · " + vehicle.status;
     detail.querySelector("p").textContent =
-      vehicle.name + " · Parada simulada às " + vehicle.time;
-    map?.panTo(vehicle.path[1]);
-    map?.setZoom(16);
+      row.route +
+      " · " +
+      vehicle.name +
+      " · " +
+      row.progress +
+      "% do percurso simulado";
+    layers?.highlight(id);
+    if (focus && map) {
+      map.panTo(splitRoute(row).position);
+      map.setZoom(16);
+      toggle.setAttribute("aria-expanded", "true");
+    }
   }
+  select(selected, false);
   buttons.forEach(
     (b) => (b.onclick = () => select(b.querySelector("b").textContent)),
   );
@@ -49,7 +73,11 @@ export function setupTracking() {
       b.hidden = !normalize(
         b.querySelector("b").textContent +
           " " +
-          b.querySelector("span").textContent,
+          b.querySelector("span").textContent +
+          " " +
+          fleet
+            .find((v) => v.id === b.querySelector("b").textContent)
+            .streets.join(" "),
       ).includes(normalize(e.target.value.trim()));
     empty.hidden = buttons.some((b) => !b.hidden);
   };
@@ -61,55 +89,44 @@ export function setupTracking() {
   host.parentElement.append(actions);
   actions.firstChild.onclick = () => {
     map?.panTo(school);
-    map?.setZoom(15);
+    map?.setZoom(16);
   };
-  actions.lastChild.onclick = locate;
-  const notice = document.createElement("p");
-  notice.className = "map-notice";
-  notice.setAttribute("role", "status");
-  notice.hidden = true;
-  host.parentElement.append(notice);
-  function setNotice(text) {
-    notice.hidden = false;
-    notice.textContent = text;
-  }
+  actions.lastChild.onclick = () => {
+    document.getElementById("percurso").scrollIntoView();
+    address.locate();
+  };
   function setStatus(status) {
     message.hidden = status === "ready";
     actions.hidden = status !== "ready";
     message.querySelector("strong").textContent =
-      status === "quota" ? "Cota do Google Maps esgotada" : status === "error"
-        ? "Google Maps indisponível"
-        : "Carregando Google Maps…";
+      status === "quota"
+        ? "Cota do Google Maps esgotada"
+        : status === "error"
+          ? "Google Maps indisponível"
+          : "Carregando Google Maps…";
     message.querySelector("p").textContent =
-      status === "quota" ? "Aguarde a renovação da cota para abrir o mapa novamente." : status === "error"
-        ? "Confira a conexão, a chave e o domínio permitido. Se a cota diária da Demo Key acabou, tente novamente após a renovação."
-        : "Abrindo a região da escola.";
+      status === "quota"
+        ? "Aguarde a renovação da cota para abrir o mapa novamente."
+        : status === "error"
+          ? "Confira a conexão, a chave e o domínio permitido. Se a cota diária da Demo Key acabou, tente novamente após a renovação."
+          : "Abrindo a região da escola.";
   }
-  function locate() {
-    if (!navigator.geolocation) {
-      setNotice("Localização indisponível neste navegador.");
-      return;
-    }
-    setNotice("Buscando sua posição…");
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        map?.panTo({ lat: p.coords.latitude, lng: p.coords.longitude });
-        map?.setZoom(16);
-        setNotice("Mapa centralizado na sua posição.");
-      },
-      () => setNotice("Não foi possível acessar sua localização."),
-      { timeout: 9000 },
-    );
-  }
-
   function initialize() {
     let disposed = false;
     const cleanup = [];
     const error = (cause) => {
       if (!disposed) {
-        map = null;
+        address.attach(null);
+        layers?.dispose();
+        layers = map = null;
         const reason = [cause?.code, cause?.status, cause?.message].join(" ");
-        setStatus(/OVER_QUERY_LIMIT|RESOURCE_EXHAUSTED|OverQuotaMapError|\b429\b/i.test(reason) ? "quota" : "error");
+        setStatus(
+          /OVER_QUERY_LIMIT|RESOURCE_EXHAUSTED|OverQuotaMapError|\b429\b/i.test(
+            reason,
+          )
+            ? "quota"
+            : "error",
+        );
       }
     };
     window.addEventListener("coleta-map-error", error);
@@ -121,8 +138,11 @@ export function setupTracking() {
         try {
           await loadMaps(apiKey);
           if (disposed || !host) return;
-          const layers=createFleetMap(host,mapId,select);
-          map=layers.map;cleanup.push(layers.dispose);
+          layers = createFleetMap(host, mapId, select);
+          map = layers.map;
+          layers.highlight(selected);
+          address.attach(layers);
+          cleanup.push(() => layers?.dispose());
           setStatus("ready");
         } catch (cause) {
           error(cause);
