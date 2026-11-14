@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ColetaJá — Saiba quando a coleta está chegando.</title>
+    <meta
+      name="description"
+      content="Acompanhe o trajeto dos caminhões, consulte rotas e tenha mais previsibilidade na coleta da sua região. Protótipo demonstrativo com dados simulados."
+    />
+    <script type="module" src="/js/main.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="#inicio" aria-label="ColetaJá, início"
+        ><span class="brand"><svg class="brand-mark" viewBox="0 0 32 24" aria-hidden="true" focusable="false"><defs><symbol id="coletaja-mark" viewBox="0 0 32 24"><path d="M1 17 15 3h10L11 17Z" fill="#b9db86"/><path d="M9 22 23 8h8L17 22Z" fill="#72a77f"/></symbol></defs><use href="#coletaja-mark"/></svg><span class="brand-name">ColetaJá</span></span></a
+      >
+      <nav aria-label="Principal" class="navigation">
+        <a class="nav-about" href="#percurso">O percurso</a
+        ><a class="nav-about" href="#frota">O veículo</a
+        ><button class="nav-demo">
+          <i></i>Abrir mapa <span aria-hidden="true">↗</span>
+        </button>
+      </nav>
+    </header>
+    <main id="inicio">
+      <section class="hero" data-revealed="false" aria-labelledby="hero-title">
+        <div
+          class="hero-world"
+          data-exploring="false"
+          role="group"
+          aria-label="Maquete do setor central. O caminhão verde CJ–01 atravessa a avenida e para junto aos contêineres da calçada."
+        >
+          <div class="hero-still" style="opacity: 1"></div>
+        </div>
+        <div class="journey-controls" hidden>
+          <button data-skip>Pular introdução</button
+          ><button data-explore hidden>Explorar em 3D</button
+          ><button data-play>Pausar percurso</button>
+        </div>
+        <div class="vehicle-tools" hidden>
+          <span class="orbit-tip" hidden>Arraste para girar · ← →</span
+          ><button
+            class="vehicle-tag"
+            aria-label="Ver detalhes do caminhão CJ-01"
+          >
+            CJ-01 <span aria-hidden="true">＋</span>
+          </button>
+          <aside class="vehicle-panel" aria-label="Detalhes do caminhão" hidden>
+            <button class="dismiss" aria-label="Fechar detalhes">×</button
+            ><b>Compactador CJ-01</b>
+            <p>Em parada de coleta · Simulação</p>
+            <a href="#plataforma">Explorar a rota →</a>
+          </aside>
+        </div>
+        <div class="hero-light" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <h1 id="hero-title">Saiba quando a coleta está chegando.</h1>
+          <p class="hero-line">
+            Acompanhe o trajeto dos caminhões, consulte rotas e tenha mais
+            previsibilidade na coleta da sua região.
+          </p>
+          <div class="actions">
+            <button class="primary">
+              Explorar plataforma <span aria-hidden="true">↗</span></button
+            ><a class="secondary" href="#percurso"
+              >Como funciona <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <small class="demo-note"
+            >Protótipo demonstrativo · Dados simulados</small
+          >
+        </div>
+      </section>
+      <section
+        id="plataforma"
+        class="tracking"
+        aria-labelledby="tracking-title"
+      >
+        <header class="tracking-head">
+          <div>
+            <p>Fortaleza · Ceará</p>
+            <h2 id="tracking-title">Mapa da coleta</h2>
+          </div>
+          <span>Caminhões, rotas e horários simulados</span>
+        </header>
+        <div class="tracking-body">
+          <aside class="tracking-tools">
+            <label
+              >Buscar caminhão ou rota<input
+                type="search"
+                placeholder="Ex.: CJ-01 ou Parquelândia"
+                value=""
+            /></label>
+            <div class="truck-list"></div>
+            <div class="tracking-detail" aria-live="polite">
+              <b>CJ-01 · Em coleta</b>
+              <p>Entorno da escola · Parada simulada às 08:15</p>
+            </div>
+          </aside>
+          <div class="map-space">
+            <div class="google-surface" aria-label="Mapa de Fortaleza"></div>
+            <div class="map-message" role="status">
+              <strong>Google Maps aguarda configuração</strong>
+              <p>A chave da API ainda não está configurada.</p>
+              <small
+                >EEEP Joaquim Nogueira · Rua Dr. Moreira de Sousa, 327 ·
+                Parquelândia</small
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="city-story">
+        <section id="percurso" class="neighborhood">
+          <div class="route-query">
+            <h2>Como acompanhar a coleta no seu bairro</h2>
+            <p>
+              Escolha uma rota e um ponto de coleta para saber se o caminhão já
+              passou.
+            </p>
+            <label for="resident-route">Região ou rota demonstrativa</label
+            ><select id="resident-route"></select
+            ><label for="resident-stop">Ponto de coleta</label
+            ><select id="resident-stop"></select>
+          </div>
+          <div class="resident-report" aria-live="polite">
+            <div class="report-head">
+              <span>Boletim da rota</span><span id="report-ref"></span>
+            </div>
+            <h3 id="stop-state"></h3>
+            <p id="resident-tip"></p>
+            <ol id="stop-line" aria-label="Sequência de paradas"></ol>
+            <dl class="report-facts">
+              <div>
+                <dt>Veículo</dt>
+                <dd id="report-truck"></dd>
+              </div>
+              <div>
+                <dt>Coleta na rota</dt>
+                <dd id="report-progress"></dd>
+              </div>
+              <div>
+                <dt>Previsão da rota</dt>
+                <dd id="report-time"></dd>
+              </div>
+            </dl>
+            <p class="report-note">
+              Dados simulados. O horário informado se refere à parada da rota; o
+              boletim não prevê a passagem em cada rua.
+            </p>
+          </div>
+        </section>
+        <section
+          id="frota"
+          class="vehicle-spread"
+          aria-labelledby="fleet-title"
+        >
+          <div class="vehicle-visual">
+            <div class="truck-stage">
+              <img
+                src="/compactador.webp"
+                alt="Caminhão compactador CJ-01"
+                loading="lazy"
+              />
+            </div>
+            <p>↔ &nbsp; Arraste para explorar</p>
+          </div>
+          <div class="vehicle-notes">
+            <h2 id="fleet-title">Conheça o caminhão CJ-01</h2>
+            <p>
+              Explore o modelo tridimensional do caminhão compactador utilizado
+              na demonstração do ColetaJá.
+            </p>
+            <fieldset class="parts">
+              <legend>Componentes do veículo</legend>
+              <div id="part-buttons"></div>
+            </fieldset>
+            <p id="part-description" aria-live="polite">
+              Selecione uma peça para consultar sua função.
+            </p>
+          </div>
+        </section>
+        <aside id="sobre" class="project-note">
+          <h2>Sobre o projeto</h2>
+          <p>
+            O ColetaJá propõe tornar os horários de coleta mais previsíveis.
+            Moradores consultariam gratuitamente as rotas; prefeituras e
+            empresas poderiam contratar o acompanhamento de frota e de atrasos.
+          </p>
+          <p>
+            Protótipo acadêmico da disciplina de Gestão de Startup da EEEP
+            Joaquim Nogueira, em Fortaleza, Ceará. Os registros operacionais são
+            fictícios.
+          </p>
+        </aside>
+        <section class="map-return">
+          <div>
+            <h2>Acompanhe uma rota no ColetaJá.</h2>
+            <p>
+              Explore os veículos e consulte as informações da coleta
+              demonstrativa diretamente no mapa.
+            </p>
+          </div>
+          <a href="#plataforma">Abrir mapa ↑</a>
+        </section>
+      </div>
+    </main>
+    <footer class="page-foot">
+      <span class="brand"><svg class="brand-mark" viewBox="0 0 32 24" aria-hidden="true" focusable="false"><use href="#coletaja-mark"/></svg><span class="brand-name">ColetaJá</span></span>
+      <p>Acompanhamento da coleta urbana.</p>
+      <nav aria-label="Rodapé">
+        <a href="#inicio">Início ↑</a><a href="#plataforma">Mapa</a
+        ><a href="#percurso">Como funciona</a><a href="#sobre">Sobre</a>
+      </nav>
+      <small
+        >Projeto acadêmico · EEEP Joaquim Nogueira · <time>2026</time> · Dados
+        simulados</small
+      >
+    </footer>
+  </body>
+</html>

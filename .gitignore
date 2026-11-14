@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env*
+!.env.example
+
+GUIA-DE-ESTUDOS.md
+design-systems/
