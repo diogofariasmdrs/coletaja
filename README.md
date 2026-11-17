@@ -1,58 +1,80 @@
-# ColetaJá v0.3.0 · Gestão de Operações
 
-Aplicação demonstrativa em HTML, CSS e módulos JavaScript, com Three.js, GSAP, ScrollTrigger, Lenis e Google Maps. A frota e os horários são simulados.
+# ColetaJá v0.3.0
 
-## Executar
+O ColetaJá é um projeto acadêmico de tecnologia urbana desenvolvido na disciplina de Gestão de Startup da EEEP Joaquim Nogueira, em Fortaleza. O projeto parte de uma dificuldade comum entre moradores: saber por onde passa a coleta de resíduos e quando ela pode chegar à sua região.
 
-Com Node.js 22.12 ou superior instalado, abra um terminal nesta pasta e execute:
+A versão atual demonstra como moradores podem consultar trajetos e como gestores podem acompanhar uma frota de coleta.
+
+**[Acessar o ColetaJá](https://coletaja-gold.vercel.app)** · **[Abrir o painel de gestão](https://coletaja-gold.vercel.app/gestao/)**
+
+## Funcionalidades da v0.3.0
+
+- Abertura cinematográfica com cidade e caminhão compactador renderizados em 3D.
+- Mapa interativo de Fortaleza com seleção de veículos e visualização dos trajetos.
+- Consulta por endereço, bairro, ponto de referência ou localização do dispositivo.
+- Identificação das rotas que atravessam cada bairro e da distância entre um endereço e o percurso mais próximo.
+- Painel de gestão com nove veículos iniciais, cadastro de caminhões, atribuição de rotas e controle da simulação.
+- Registro de ocorrências operacionais e exportação de relatório em CSV.
+
+## Dados e simulação
+
+A consulta utiliza os limites dos 121 bairros de Fortaleza e um cadastro municipal com 52.304 trechos de ruas. Ao informar um número, o sistema usa a faixa de numeração cadastrada para localizar o trecho aproximado. A distância até a rota é calculada em linha reta.
+
+Os trajetos demonstrativos seguem ruas reais. Os caminhões, suas posições, horários e ocorrências são simulados. A faixa de 180 metros indica proximidade com um percurso da demonstração e não confirma atendimento municipal. As alterações feitas no painel ficam salvas no navegador de cada visitante.
+
+Fontes: [Fortaleza em Mapas](https://mapas.fortaleza.ce.gov.br/catalogo) e [Cadastro de Logradouros da Prefeitura de Fortaleza](https://dados.fortaleza.ce.gov.br/dataset/logradouros-fortaleza).
+
+## Tecnologias
+
+| Área | Tecnologias |
+| --- | --- |
+| Interface | HTML5, CSS e JavaScript com módulos ES |
+| Cena 3D | Three.js |
+| Animação e rolagem | GSAP, ScrollTrigger e Lenis |
+| Mapa interativo | Google Maps JavaScript API |
+| Desenvolvimento e testes | Node.js e Vite |
+| Hospedagem | Vercel |
+
+## Executar localmente
+
+Com Git e Node.js 22.12 ou superior instalados, execute:
 
 ```sh
+git clone https://github.com/diogofariasmdrs/coletaja.git
+cd coletaja
 npm ci
 npm run dev
 ```
 
-Abra o endereço Local mostrado pelo Vite. Para testar na mesma rede Wi-Fi, execute `npm run dev -- --host 0.0.0.0` e abra no celular o endereço Network. O firewall do computador precisa permitir a conexão na rede privada.
+Abra o endereço exibido pelo Vite. O painel de gestão está disponível no caminho `/gestao/`.
 
-## Gerar a versão de apresentação
+## Configurar o Google Maps
 
-Execute `npm run build`. O site pronto fica em `dist/`. Execute `npm run preview` para conferi-lo pelo navegador. Para publicar, sirva essa pasta em um servidor estático.
+Para desenvolvimento local, copie `.env.example` para `.env.local`, na raiz do projeto, e configure as variáveis abaixo.
 
-## Testar o Google Maps com uma Demo Key
+| Variável | Configuração |
+| --- | --- |
+| `VITE_GOOGLE_MAPS_API_KEY` | Chave de navegador habilitada para a Maps JavaScript API. |
+| `VITE_GOOGLE_MAPS_MAP_ID` | Identificador visual do mapa. Quando vazio, a aplicação usa `DEMO_MAP_ID`. |
+| `VITE_ENABLE_GEOCODING` | O valor padrão `false` mantém a consulta no cadastro local. |
 
-1. Obtenha sua chave pessoal na [página oficial de demonstração](https://developers.google.com/maps/documentation/javascript/demo-key). A Demo Key permite prototipagem com cota diária, sem cadastrar faturamento.
-2. Na pasta que contém package.json, copie .env.example para .env.local. Preencha VITE_GOOGLE_MAPS_API_KEY com a chave. Para o teste, VITE_GOOGLE_MAPS_MAP_ID pode ficar vazio. Nesse caso a aplicação usa o Map ID de exemplo do Google. O Map ID identifica a configuração visual e a chave autoriza o acesso.
-3. Execute npm run dev (reinicie se já estava rodando) e abra o endereço Local exibido pelo Vite. As variáveis são lidas pelo Vite ao iniciar. Para testar pelo celular, use as instruções de rede acima.
-4. Role até “Mapa da coleta”. Confira a escola, selecione CJ-03 no mapa e na lista de veículos e use o zoom para afastar até o Brasil ou aproximar até as ruas. No celular, use dois dedos no mapa. Todas as rotas e horários da frota são fictícios.
+Reinicie o Vite depois de alterar as variáveis. O mapa interativo requer internet e uma chave válida. A consulta ao cadastro local funciona sem chave.
 
-O centro inicial fica em **−3.739368338, −38.56655153**, no entorno da Rua Dr. Moreira de Sousa, 327, Parquelândia, Fortaleza. [Coordenadas da escola](https://www.escolasnobrasil.com/nordeste/eeep-joaquim-nogueira-fortaleza) · [Endereço na Seduc](https://www.seduc.ce.gov.br/wp-content/uploads/sites/37/2019/01/joauim_nogueira_prof.pdf).
+Na Vercel, selecione o preset **Vite**, mantenha `./` como diretório raiz, use `npm run build` como comando de build e `dist` como diretório de saída. Cadastre as variáveis em **Settings → Environment Variables**, no ambiente **Production**, e gere um novo deploy após alterar seus valores.
 
-Sem chave aparece o aviso de configuração. Para falha de carregamento, confira conexão e restrições. Se o console mostrar OverQuotaMapError, aguarde a renovação da cota. Alguns erros do mapa base só informam o código no console. A inclinação depende de suporte vetorial. [Diagnóstico do Google](https://developers.google.com/maps/documentation/javascript/error-messages).
+Mantenha o `.env.local` fora do Git. Como a chave é utilizada no navegador, restrinja seu uso às APIs e aos domínios autorizados. Para esta publicação, o domínio é `https://coletaja-gold.vercel.app/*`. Uma Demo Key possui cota diária e se destina à prototipagem. [Documentação do Google Maps](https://developers.google.com/maps/documentation/javascript/demo-key)
 
-O Git ignora .env.local. Uma chave VITE usada no navegador fica visível nas requisições: restrinja o uso aos endereços e à API necessários. Para produção, configure credenciais e Map ID próprios e revise faturamento e limites antes de publicar. Use a Demo Key apenas em protótipos.
+## Testes e build
 
-## Consulta por endereço
+```sh
+npm test
+npm run build
+npm run preview
+```
 
-Pesquise **EEEP Joaquim Nogueira** para ver um endereço próximo da frota ou **Av. Beira Mar** para experimentar o setor Meireles. A consulta por rua usa um índice local com 52.304 trechos de Fortaleza. O número identifica uma faixa do cadastro. O ponto representa o centro aproximado do trecho. A escola usa sua coordenada cadastrada.
+Os testes verificam a consulta por endereço, a proximidade das rotas, o planejamento e a simulação da frota. O build gera o site e o painel em `dist/`. O preview permite conferir essa versão no navegador.
 
-Em **Escolher ponto no mapa**, toque em vários locais e use **Concluir** para guardar o último ponto na página. A cobertura demonstrativa considera até 180 metros em linha reta até o trajeto. Os veículos são fictícios.
+## Próximas versões
 
-A consulta local funciona sem chave. O mapa interativo requer internet e a chave configurada em `.env.local`. A opção `VITE_ENABLE_GEOCODING` vem desligada. Só a ative para consultas sem correspondência local se a sua configuração do Google permitir esse serviço e você tiver revisado a cobrança.
-
-Por bairro, a consulta mostra os trajetos ativos que cruzam seu limite. Por endereço ou local, mostra a distância até a linha do percurso. Fora da faixa de 180 m, informa qual rota ficou mais perto. Para uma rua sem número, a posição é uma referência aproximada. Por exemplo, pesquise **Barra do Ceará**, **Rio Mar Kenedy** ou **Av. Filomeno Gomes, 293, Jacarecanga**.
-
-### Fontes
-
-- [Fortaleza em Mapas](https://mapas.fortaleza.ce.gov.br/catalogo), Prefeitura de Fortaleza. Limites dos bairros (camada 21) e pontos públicos das camadas 739 (shoppings), 754 e 755 (escolas), 639 (ensino superior) e 823 (hospitais municipais). Os registros correspondem às respectivas edições dos cadastros.
-
-- Cadastro de ruas da Prefeitura de Fortaleza / SEFIN, CC BY. Índice adaptado a partir das coordenadas e das faixas de numeração dos trechos. [Dados abertos da Prefeitura](https://dados.fortaleza.ce.gov.br/dataset/logradouros-fortaleza)
-- Os circuitos usam os eixos completos da mesma base SEFIN. Em sectorPaths.json, sourceIds identifica cada trecho municipal e ends marca onde termina sua geometria.
-
-### Validar
-
-Execute `npm test` para conferir os cálculos de cobertura, a posição da frota e a busca por rua. Depois execute `npm run build` para gerar o site em `dist/`.
-## Gestão de Operações · v0.3.0
-
-Acesse /gestao/ para iniciar o relógio demonstrativo, registrar veículos, atribuir rotas, resolver ocorrências e exportar o relatório CSV. A simulação começa pausada. As alterações ficam no navegador desta origem. O mapa público usa a mesma frota. A opção de restauração está em Relatório.
-
-A frota inicial tem nove veículos. Três percursos ligam Vila Velha à Barra do Ceará, Jacarecanga a Presidente Kennedy e Messejana a Cambeba. Em Rotas, escolha um dos 121 bairros e compare os trajetos pelas ruas e pela extensão. Os pontos da simulação são calculados automaticamente. Um percurso disponível no catálogo só aparece na consulta de cobertura depois que uma rota ativa usa esse percurso.
-
+O objetivo é aprimorar a precisão da consulta por endereço e avaliar com usuários a clareza das informações apresentadas no mapa e no painel. Uma futura integração com serviços reais de coleta dependerá de dados autorizados e de validação com os responsáveis pela operação.
+````
