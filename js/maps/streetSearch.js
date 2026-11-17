@@ -1,3 +1,22 @@
+const abbreviations = {
+  pde: "padre",
+  cel: "coronel",
+  duq: "duque",
+  pref: "prefeito",
+  sen: "senador",
+  des: "desembargador",
+  eng: "engenheiro",
+  sta: "santa",
+  sto: "santo",
+  ten: "tenente",
+  jd: "jardim",
+  gal: "general",
+  dep: "deputado",
+  maj: "major",
+  cap: "capitao",
+  pq: "parque",
+  pres: "presidente",
+};
 export function normalizeAddress(value) {
   return value
     .normalize("NFD")
@@ -8,7 +27,11 @@ export function normalizeAddress(value) {
     .replace(/\b(av|aven)\b/g, "avenida")
     .replace(/\br\b/g, "rua")
     .replace(/\bdr\b/g, "doutor")
-    .replace(/\bprof\b/g, "professor");
+    .replace(/\bprof\b/g, "professor")
+    .replace(
+      /\b(?:pde|cel|duq|pref|sen|des|eng|sta|sto|ten|jd|gal|dep|maj|cap|pq|pres)\b/g,
+      (word) => abbreviations[word],
+    );
 }
 const streetKey = (text) =>
   normalizeAddress(text).replace(/^(rua|avenida|travessa|praca|alameda) /, "");
@@ -17,7 +40,7 @@ function parseQuery(text) {
     /\s+(?:fortaleza(?: ce)?|ceara|ce)$/,
     "",
   );
-  const match = q.match(/^(.*[a-z0-9)])\s+(?:n[ºo]?\s*)?(\d+)$/);
+  const match = q.match(/^(.*[a-z0-9)])\s+(?:(?:n|no|numero)\s*)?(\d+)$/);
   return {
     fullName: match ? match[1] : q,
     street: streetKey(match ? match[1] : q),
@@ -25,17 +48,36 @@ function parseQuery(text) {
   };
 }
 
-export function searchStreets(query, streets) {
-  const { fullName, street, number } = parseQuery(query);
+export function searchStreets(query, streets, inDistrict) {
+  let { fullName, street, number } = parseQuery(query);
+  if (
+    number !== null &&
+    streets.some(([name]) => normalizeAddress(name) === normalizeAddress(query))
+  ) {
+    fullName = normalizeAddress(query);
+    street = streetKey(query);
+    number = null;
+  }
   if (street.length < 2) return { choices: [] };
   const typed = /^(rua|avenida|travessa|praca|alameda) /.test(fullName);
-  const exact = streets.filter(([name]) =>
-    typed ? normalizeAddress(name) === fullName : streetKey(name) === street,
+  function sameStreet(name) {
+    return typed
+      ? normalizeAddress(name) === fullName
+      : streetKey(name) === street;
+  }
+  const containsSegment = ([, , lat, lng]) =>
+    !inDistrict || inDistrict({ lat: lat / 100000, lng: lng / 100000 });
+  const exact = streets.filter(
+    ([name]) =>
+      sameStreet(name) ||
+      (inDistrict && sameStreet(name.replace(/\s*\([^)]*\)\s*$/, ""))),
   );
   if (!exact.length) {
     const parts = street.split(" ");
-    const names = streets.filter(([name]) =>
-      parts.every((word) => streetKey(name).includes(word)),
+    const names = streets.filter(
+      ([name, segments]) =>
+        parts.every((word) => streetKey(name).includes(word)) &&
+        (!inDistrict || segments.some(containsSegment)),
     );
     return {
       suggestions: [...new Set(names.map(([name]) => name))]
@@ -44,7 +86,11 @@ export function searchStreets(query, streets) {
     };
   }
   const choices = [];
-  for (const [name, segments] of exact) {
+  for (const [name, allSegments] of exact) {
+    const segments = inDistrict
+      ? allSegments.filter(containsSegment)
+      : allSegments;
+    if (!segments.length) continue;
     const pretty = name
       .toLocaleLowerCase("pt-BR")
       .replace(/(^|\s)\p{L}/gu, (letter) => letter.toLocaleUpperCase("pt-BR"));

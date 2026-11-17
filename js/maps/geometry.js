@@ -19,37 +19,45 @@ export function segmentDistance(point, start, end) {
   return Math.hypot(p.x - t * v.x, p.y - t * v.y);
 }
 
-export function findCoverage(point, rows) {
+export function findCoverage(point, rows, limit = coverageMeters) {
   let best = null;
   for (const row of rows) {
     const path = row.truck.path;
     for (let i = 1; i < path.length; i++) {
       const meters = segmentDistance(point, path[i - 1], path[i]);
-      if (meters <= coverageMeters && (!best || meters < best.meters))
+      if (meters <= limit && (!best || meters < best.meters))
         best = { row, meters };
     }
   }
   return best;
 }
 
-// O boletim fixa a fração percorrida. O marcador divide a linha nessa distância.
+// As geometrias dos circuitos são imutáveis e compartilhadas pelos veículos.
+const measures = new WeakMap();
+export function pathMeasure(path) {
+  let measure = measures.get(path);
+  if (!measure) {
+    const lengths = path.slice(1).map((p, i) => {
+      const { x, y } = offset(path[i], p);
+      return Math.hypot(x, y);
+    });
+    measure = { lengths, meters: lengths.reduce((a, b) => a + b, 0) };
+    measures.set(path, measure);
+  }
+  return measure;
+}
 export function splitRoute(row) {
-  const path = row.truck.path;
-  const lengths = path.slice(1).map((point, i) => {
-    const { x, y } = offset(path[i], point);
-    return Math.hypot(x, y);
-  });
-  let remaining =
-    (lengths.reduce((sum, length) => sum + length, 0) * row.completed) /
-    row.stops.length;
+  const path = row.truck.path,
+    { lengths, meters } = pathMeasure(path);
+  let remaining = meters * (row.fraction ?? row.completed / row.stops.length);
   for (let i = 0; i < lengths.length; i++) {
     if (remaining <= lengths[i] || i === lengths.length - 1) {
       const t = lengths[i] ? Math.min(1, remaining / lengths[i]) : 0;
       const a = path[i],
         b = path[i + 1];
       const position = {
-        lat: a.lat + t * (b.lat - a.lat),
-        lng: a.lng + t * (b.lng - a.lng),
+        lat: t >= 1 - 1e-12 ? b.lat : a.lat + t * (b.lat - a.lat),
+        lng: t >= 1 - 1e-12 ? b.lng : a.lng + t * (b.lng - a.lng),
       };
       return {
         position,

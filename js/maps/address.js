@@ -1,7 +1,14 @@
+import { coverage, plannedRoutes, school } from "./planning.js";
+import {
+  parseLocation,
+  areaContains,
+  pathInDistrict,
+  matchingPlaces,
+} from "./localSearch.js";
+import { snapshot } from "./store.js";
+import { setupSuggestions } from "./suggestions.js";
 import { searchStreets } from "./streetSearch.js";
-import { school } from "./demoRoutes.js";
-import { operations } from "./operations.js";
-import { findCoverage } from "./geometry.js";
+import { operations, refreshOperations } from "./operations.js";
 
 const normalize = (text) =>
   text
@@ -23,7 +30,10 @@ export function setupAddress(select) {
   const section = el("percurso");
   const pick = el("address-pick"),
     view = el("address-view");
-  const geocoding = import.meta.env.VITE_ENABLE_GEOCODING === "true";
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
+  const geocoding = Boolean(
+    apiKey && import.meta.env.VITE_ENABLE_GEOCODING === "true",
+  );
   const help = el("address-help");
   const mapBox = document.querySelector(".map-space");
   const pickBar = document.createElement("div");
@@ -83,17 +93,23 @@ export function setupAddress(select) {
   function showPoint() {
     if (!layers || !last) return;
     placeMarker(last.point, last.label);
+    if (last.bounds) {
+      layers.map.fitBounds(last.bounds, 36);
+      return;
+    }
     layers.map.panTo(last.point);
-    layers.map.setZoom(17);
+    layers.map.setZoom(last.zoom || 17);
   }
   function display(point, label, precision = "") {
     stopPicking();
-    const match = findCoverage(point, operations);
+    refreshOperations();
+    const { match, text } = coverage(point, snapshot(), operations);
     last = { point, label, match };
-    if (match) {
+    view.textContent = "Ver no mapa";
+    if (match?.row.vehicle) {
       const { row, meters } = match;
       select(row.vehicle, false);
-      announce(label, row.route + " · " + row.truck.name);
+      announce(label, text + " " + row.truck.name);
       el("coverage-vehicle").textContent =
         row.vehicle + " · " + row.truck.status;
       el("coverage-progress").textContent = row.progress + "%";
@@ -101,10 +117,7 @@ export function setupAddress(select) {
       el("coverage-facts").hidden = false;
     } else {
       layers?.highlight();
-      announce(
-        label,
-        "Ainda não há rota demonstrativa cadastrada para este endereço.",
-      );
+      announce(label, text);
     }
     if (precision) el("address-result").textContent += " · " + precision;
     view.hidden = !layers;
@@ -114,21 +127,115 @@ export function setupAddress(select) {
     event.preventDefault();
     const id = begin(),
       query = el("address-input").value.trim();
+    let area;
     if (schoolAliases.includes(normalize(query))) {
       display(school, schoolAddress + " · EEEP Joaquim Nogueira");
       return;
     }
-    announce(
-      "Consultando o cadastro de ruas…",
-      "Localizando o trecho em Fortaleza.",
-    );
+    announce("Consultando o endereço…", "Buscando nos cadastros de Fortaleza.");
     try {
+      const { district, street } = parseLocation(query);
+      const bounds = district
+        ? (await import("./districtBounds.json")).default[district.index]
+        : null;
+      area = bounds;
+      if (id !== request) return;
+      if (district && !street) {
+        refreshOperations();
+        const state = snapshot();
+        const routes = plannedRoutes(state).filter(
+          (r) => r.active && pathInDistrict(r.path, bounds),
+        );
+        const list = routes.map((r) => {
+          const v = state.vehicles.find((v) => v.active && v.route === r.code);
+          return r.code + (v ? " (" + v.id + ")" : " (sem caminhão atribuído)");
+        });
+        const summary = list.length
+          ? "Percursos demonstrativos que passam pelo bairro: " +
+            list.join(", ") +
+            "."
+          : "Nenhum percurso ativo atravessa este bairro. Tomando como referência um ponto central do bairro: " +
+            coverage(district.center, state, operations).text;
+        const [west, south, east, north] = bounds.box;
+        last = {
+          point: district.center,
+          label: district.name + " · referência do bairro",
+          bounds: { west, south, east, north },
+        };
+        view.textContent = "Ver bairro no mapa";
+        layers?.highlight();
+        announce(
+          district.name + " · Bairro",
+          summary +
+            " Digite sua rua e número para consultar a distância do endereço.",
+        );
+        view.hidden = !layers;
+        showPoint();
+        return;
+      }
+      const { default: places } = await import("./places.json");
+      if (id !== request) return;
+      const placesFound = district
+        ? matchingPlaces(places, street).filter((hit) =>
+            areaContains(bounds, hit.place.point),
+          )
+        : matchingPlaces(places, query);
+      function showPlaces(hits) {
+        const accept = (p) =>
+          display(
+            p.point,
+            p.label,
+            p.kind + (p.district ? " · " + p.district : ""),
+          );
+        if (hits.length === 1) {
+          accept(hits[0].place);
+          return;
+        }
+        announce(
+          "Qual local você procura?",
+          "Escolha pelo nome e pelo bairro.",
+        );
+        const chooser = document.createElement("select");
+        chooser.setAttribute("aria-label", "Locais encontrados");
+        chooser.add(new Option("Escolha um local", ""));
+        hits.forEach(({ place: p }, i) =>
+          chooser.add(new Option(p.label + " · " + p.district, String(i))),
+        );
+        chooser.onchange = () => {
+          if (chooser.value !== "") accept(hits[Number(chooser.value)].place);
+        };
+        el("street-choices").append(chooser);
+        chooser.focus({ preventScroll: true });
+      }
+      const exactPlaces = placesFound.filter((p) => p.rank === 0);
+      if (exactPlaces.length) {
+        showPlaces(exactPlaces);
+        return;
+      }
       const { default: streets } = await import("./fortaleza-streets.json");
       if (id !== request) return;
-      const result = searchStreets(query, streets);
+      let result = searchStreets(
+        street,
+        streets,
+        bounds ? (p) => areaContains(bounds, p) : undefined,
+      );
+      if (district && !result.choices?.length) {
+        const literal = searchStreets(query, streets, (p) =>
+          areaContains(bounds, p),
+        );
+        if (literal.choices?.length) result = literal;
+      }
+      if (!result.streetFound && placesFound.length) {
+        showPlaces(placesFound);
+        return;
+      }
       const choices = result.choices || [];
       const accept = (choice) =>
-        display(choice.point, choice.label, choice.detail);
+        display(
+          choice.point,
+          choice.label,
+          choice.detail + (district ? " · " + district.name : ""),
+        );
       if (choices.length === 1) {
         accept(choices[0]);
         return;
@@ -157,7 +264,9 @@ export function setupAddress(select) {
           );
         else
           result.suggestions.forEach((name) =>
-            chooser.add(new Option(name, name)),
+            chooser.add(
+              new Option(name, name + (district ? ", " + district.name : "")),
+            ),
           );
         chooser.onchange = () => {
           if (!chooser.value) return;
@@ -171,20 +280,42 @@ export function setupAddress(select) {
         chooser.focus({ preventScroll: true });
         return;
       }
-      if (!geocoding || !layers) {
+      if (!geocoding) {
         announce(
           result.streetFound
-            ? "Número fora das faixas cadastradas"
-            : "Rua não encontrada no cadastro",
+            ? "Trecho não confirmado para este endereço"
+            : "Endereço ou local não identificado",
           result.streetFound
-            ? "Pesquise apenas o nome da rua para ver um ponto de referência ou escolha o local no mapa."
-            : "Confira a grafia e tente o nome da rua sem bairro ou CEP. Também é possível marcar o local no mapa.",
+            ? "Confira o bairro e o número, ou consulte apenas a rua para ver uma referência aproximada."
+            : "Tente o nome da rua e o bairro, ou use sua localização." +
+                (layers ? " Você também pode escolher o ponto no mapa." : ""),
         );
+        if (result.streetFound && /\s\d+$/.test(street)) {
+          const reference = street.replace(
+            /\s+(?:(?:n|no|numero)\s*)?\d+$/,
+            "",
+          );
+          const alternatives = searchStreets(
+            reference,
+            streets,
+            bounds ? (p) => areaContains(bounds, p) : undefined,
+          );
+          if (alternatives.choices?.length) {
+            const button = document.createElement("button");
+            button.textContent = "Consultar a rua sem o número";
+            button.onclick = () => {
+              el("address-input").value =
+                reference + (district ? ", " + district.name : "");
+              el("address-form").requestSubmit();
+            };
+            el("street-choices").append(button);
+          }
+        }
         return;
       }
     } catch {
       if (id !== request) return;
-      if (!geocoding || !layers) {
+      if (!geocoding) {
         announce(
           "O cadastro não carregou",
           "Tente buscar novamente ou escolha um ponto no mapa.",
@@ -194,6 +325,11 @@ export function setupAddress(select) {
     }
     announce("Localizando endereço…", "Consultando o Google Maps.");
     try {
+      if (!window.google?.maps?.importLibrary) {
+        const { loadMaps } = await import("./googleMaps.js");
+        await loadMaps(apiKey);
+        if (id !== request) return;
+      }
       const { Geocoder } = await google.maps.importLibrary("geocoding");
       const { results } = await new Geocoder().geocode({
         address: query + ", Fortaleza, Ceará",
@@ -203,6 +339,7 @@ export function setupAddress(select) {
       const result = results.find(
         (item) =>
           !item.partial_match &&
+          (!area || areaContains(area, item.geometry.location.toJSON())) &&
           item.address_components.some(
             (c) =>
               (c.types.includes("administrative_area_level_2") ||
@@ -264,17 +401,12 @@ export function setupAddress(select) {
   el("address-locate").onclick = locate;
   function previewPick(point) {
     candidate = point;
-    const match = findCoverage(point, operations);
+    refreshOperations();
+    const { match, text } = coverage(point, snapshot(), operations);
     layers.highlight(match?.row.vehicle);
     placeMarker(point, "Ponto em consulta");
-    pickBar.querySelector("span").textContent = match
-      ? match.row.route +
-        " · " +
-        match.row.vehicle +
-        " · " +
-        Math.round(match.meters) +
-        " m do trajeto"
-      : "Sem rota demonstrativa a até 180 m deste ponto.";
+    pickBar.querySelector("span").textContent =
+      text + (match?.row.vehicle ? " · " + match.row.vehicle : "");
     confirmPick.disabled = false;
   }
   pick.onclick = () => {
@@ -319,7 +451,7 @@ export function setupAddress(select) {
     pick.focus({ preventScroll: true });
   };
   view.onclick = () => {
-    if (last?.match) select(last.match.row.vehicle, false);
+    if (last?.match?.row.vehicle) select(last.match.row.vehicle, false);
     showPoint();
     mapBox.scrollIntoView({ block: "center" });
     mapBox.focus({ preventScroll: true });
@@ -330,12 +462,13 @@ export function setupAddress(select) {
     pick.disabled = !layers;
     view.hidden = !layers || !last;
     help.textContent =
-      "Digite a rua e, se souber, o número. A busca localiza o trecho cadastrado em Fortaleza." +
-      (geocoding && layers
+      "Pesquise um bairro, uma rua com número ou um local conhecido, como um shopping ou uma escola." +
+      (geocoding
         ? " Sem correspondência local, o endereço é consultado no Google."
         : "");
     if (layers && last) showPoint();
   }
+  setupSuggestions(el("address-input"), el("address-form"));
   attach(null);
   return { attach, locate };
 }

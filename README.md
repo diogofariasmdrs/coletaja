@@ -1,4 +1,4 @@
-# ColetaJá v0.2.0 · Mapa do morador
+# ColetaJá v0.3.0 · Gestão de Operações
 
 Aplicação demonstrativa em HTML, CSS e módulos JavaScript, com Three.js, GSAP, ScrollTrigger, Lenis e Google Maps. A frota e os horários são simulados.
 
@@ -32,17 +32,27 @@ O Git ignora .env.local. Uma chave VITE usada no navegador fica visível nas req
 
 ## Consulta por endereço
 
-Pesquise **EEEP Joaquim Nogueira** para ver um endereço próximo da frota ou **Av. Beira Mar** para experimentar uma região fora dos trajetos. A consulta por rua usa um índice local com 52.304 trechos de Fortaleza. O número identifica uma faixa do cadastro. O ponto representa o centro aproximado do trecho. A escola usa sua coordenada cadastrada.
+Pesquise **EEEP Joaquim Nogueira** para ver um endereço próximo da frota ou **Av. Beira Mar** para experimentar o setor Meireles. A consulta por rua usa um índice local com 52.304 trechos de Fortaleza. O número identifica uma faixa do cadastro. O ponto representa o centro aproximado do trecho. A escola usa sua coordenada cadastrada.
 
-Em **Escolher ponto no mapa**, toque em vários locais e use **Concluir** para guardar o último ponto na página. A cobertura demonstrativa considera até 180 metros em linha reta até o trajeto. Os três veículos são fictícios.
+Em **Escolher ponto no mapa**, toque em vários locais e use **Concluir** para guardar o último ponto na página. A cobertura demonstrativa considera até 180 metros em linha reta até o trajeto. Os veículos são fictícios.
 
 A consulta local funciona sem chave. O mapa interativo requer internet e a chave configurada em `.env.local`. A opção `VITE_ENABLE_GEOCODING` vem desligada. Só a ative para consultas sem correspondência local se a sua configuração do Google permitir esse serviço e você tiver revisado a cobrança.
 
+Por bairro, a consulta mostra os trajetos ativos que cruzam seu limite. Por endereço ou local, mostra a distância até a linha do percurso. Fora da faixa de 180 m, informa qual rota ficou mais perto. Para uma rua sem número, a posição é uma referência aproximada. Por exemplo, pesquise **Barra do Ceará**, **Rio Mar Kenedy** ou **Av. Filomeno Gomes, 293, Jacarecanga**.
+
 ### Fontes
 
+- [Fortaleza em Mapas](https://mapas.fortaleza.ce.gov.br/catalogo), Prefeitura de Fortaleza. Limites dos bairros (camada 21) e pontos públicos das camadas 739 (shoppings), 754 e 755 (escolas), 639 (ensino superior) e 823 (hospitais municipais). Os registros correspondem às respectivas edições dos cadastros.
+
 - Cadastro de ruas da Prefeitura de Fortaleza / SEFIN, CC BY. Índice adaptado a partir das coordenadas e das faixas de numeração dos trechos. [Dados abertos da Prefeitura](https://dados.fortaleza.ce.gov.br/dataset/logradouros-fortaleza)
-- Geometrias viárias © OpenStreetMap contributors, ODbL. Cada rota em `js/maps/demoRoutes.js` lista as vias de origem em `osmWays`. [Licença do OpenStreetMap](https://www.openstreetmap.org/copyright)
+- Os circuitos usam os eixos completos da mesma base SEFIN. Em sectorPaths.json, sourceIds identifica cada trecho municipal e ends marca onde termina sua geometria.
 
 ### Validar
 
 Execute `npm test` para conferir os cálculos de cobertura, a posição da frota e a busca por rua. Depois execute `npm run build` para gerar o site em `dist/`.
+## Gestão de Operações · v0.3.0
+
+Acesse /gestao/ para iniciar o relógio demonstrativo, registrar veículos, atribuir rotas, resolver ocorrências e exportar o relatório CSV. A simulação começa pausada. As alterações ficam no navegador desta origem. O mapa público usa a mesma frota. A opção de restauração está em Relatório.
+
+A frota inicial tem nove veículos. Três percursos ligam Vila Velha à Barra do Ceará, Jacarecanga a Presidente Kennedy e Messejana a Cambeba. Em Rotas, escolha um dos 121 bairros e compare os trajetos pelas ruas e pela extensão. Os pontos da simulação são calculados automaticamente. Um percurso disponível no catálogo só aparece na consulta de cobertura depois que uma rota ativa usa esse percurso.
+

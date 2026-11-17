@@ -1,8 +1,8 @@
-import { operations } from "./operations.js";
+import { operations, refreshOperations } from "./operations.js";
 import { splitRoute } from "./geometry.js";
 import { setupAddress } from "./address.js";
 import { createFleetMap } from "./fleetMap.js";
-import { fleet, school } from "./demoRoutes.js";
+import { school } from "./planning.js";
 import { loadMaps } from "./googleMaps.js";
 export function setupTracking() {
   const section = document.querySelector("#plataforma"),
@@ -13,7 +13,7 @@ export function setupTracking() {
     mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
   let map,
     layers,
-    selected = fleet[0].id;
+    selected = operations[0]?.vehicle;
   const address = setupAddress(select);
   const toggle = section.querySelector(".fleet-toggle");
   toggle.onclick = () =>
@@ -22,21 +22,32 @@ export function setupTracking() {
       String(toggle.getAttribute("aria-expanded") !== "true"),
     );
   const list = section.querySelector(".truck-list");
-  const buttons = fleet.map((vehicle, index) => {
-    const button = document.createElement("button");
-    const id = document.createElement("b");
-    const name = document.createElement("span");
-    id.textContent = vehicle.id;
-    name.textContent = operations[index].route + " · " + vehicle.name;
-    button.append(id, name);
-    button.setAttribute("aria-pressed", index === 0);
-    list.append(button);
-    return button;
-  });
+  let buttons = [];
+  function renderList() {
+    list.replaceChildren();
+    buttons = operations.map(({ truck: vehicle }, index) => {
+      const button = document.createElement("button");
+      const id = document.createElement("b");
+      const name = document.createElement("span");
+      id.textContent = vehicle.id;
+      name.textContent = operations[index].route + " · " + vehicle.name;
+      button.append(id, name);
+      button.setAttribute("aria-pressed", index === 0);
+      list.append(button);
+      button.onclick = () => select(vehicle.id);
+      return button;
+    });
+  }
+  renderList();
   function select(id, focus = true) {
     selected = id;
     const row = operations.find((r) => r.vehicle === id);
-    const vehicle = fleet.find((v) => v.id === id);
+    if (!row) {
+      detail.querySelector("b").textContent = "Sem veículos em rota";
+      detail.querySelector("p").textContent = "";
+      return;
+    }
+    const vehicle = row.truck;
     buttons.forEach((b) =>
       b.setAttribute("aria-pressed", b.querySelector("b").textContent === id),
     );
@@ -75,9 +86,9 @@ export function setupTracking() {
           " " +
           b.querySelector("span").textContent +
           " " +
-          fleet
-            .find((v) => v.id === b.querySelector("b").textContent)
-            .streets.join(" "),
+          operations
+            .find((r) => r.vehicle === b.querySelector("b").textContent)
+            .truck.streets.join(" "),
       ).includes(normalize(e.target.value.trim()));
     empty.hidden = buttons.some((b) => !b.hidden);
   };
@@ -160,6 +171,32 @@ export function setupTracking() {
     };
   }
 
+  function refresh() {
+    if (document.hidden) return;
+    refreshOperations();
+    const ids = operations.map((r) => r.vehicle + " " + r.truck.name).join();
+    if (ids !== list.dataset.ids) {
+      renderList();
+      list.append(empty);
+      section.querySelector("input").dispatchEvent(new Event("input"));
+      list.dataset.ids = ids;
+    }
+    layers?.sync(operations);
+    select(
+      operations.some((r) => r.vehicle === selected)
+        ? selected
+        : operations[0]?.vehicle,
+      false,
+    );
+  }
+  window.addEventListener("storage", refresh);
+  setInterval(() => {
+    if (
+      section.getBoundingClientRect().bottom > 0 &&
+      section.getBoundingClientRect().top < innerHeight
+    )
+      refresh();
+  }, 1000);
   if (apiKey) {
     setStatus("waiting");
     initialize();

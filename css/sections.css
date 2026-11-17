@@ -461,3 +461,10 @@
 .address-source a { text-decoration:underline; }
 #street-choices select { width:100%; min-height:44px; padding:8px; border-radius:4px; background:#f4f7ef; color:#19392d; font:inherit; }
 @media(max-width:700px) { .pick-bar { bottom:30px; right:8px; left:8px; max-width:none; } }
+.mobile-menu {display:none}
+@media(max-width:760px){
+ .topbar .navigation{display:none}.mobile-menu{display:block;position:relative}.mobile-menu summary{cursor:pointer;padding:12px;color:white}
+ .mobile-menu nav{position:absolute;right:0;top:100%;display:grid;min-width:170px;background:#163729;color:white;border:1px solid #61836d;border-radius:6px;padding:5px}.mobile-menu nav a{display:block;padding:12px}
+}
+.street-suggestions{background:#fff;border:1px solid #b5c3b3;max-height:270px;overflow:auto;color:#20392b;padding:4px;font-size:14px}
+.street-suggestions [role=option]{padding:10px;cursor:pointer;min-height:42px}.street-suggestions [aria-selected=true],.street-suggestions [role=option]:hover{background:#e6efdd}.street-suggestions mark{background:#e4eccc;color:inherit;font-weight:700}

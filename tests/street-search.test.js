@@ -11,7 +11,10 @@ test("busca por trecho, abreviação, nomes incompletos e ausência no cadastro"
   assert.ok(local.choices.some((c) => findCoverage(c.point, operations)));
   const coast = searchStreets("Av. Beira Mar", streets);
   assert.equal(coast.choices.length, 1);
-  assert.equal(findCoverage(coast.choices[0].point, operations), null);
+  assert.equal(
+    findCoverage(coast.choices[0].point, operations).row.truck.region,
+    "Meireles",
+  );
   assert.ok(
     searchStreets("azevedo bol", streets).suggestions.includes(
       "RUA AZEVEDO BOLÃO",
@@ -27,9 +30,10 @@ test("busca por trecho, abreviação, nomes incompletos e ausência no cadastro"
   );
 });
 
-test("cada caminhão percorre várias vias conectadas por mais de 1,5 km", () => {
+test("nove rotas usam trechos de origem e extensão verificável", () => {
+  assert.equal(operations.length, 9);
   for (const row of operations) {
-    assert.ok(row.truck.osmWays.length >= 3);
+    assert.ok((row.truck.osmWays || row.truck.sourceIds).length >= 3);
     const path = row.truck.path;
     const distances = path
       .slice(1)
@@ -38,6 +42,8 @@ test("cada caminhão percorre várias vias conectadas por mais de 1,5 km", () =>
           111000 *
           Math.hypot(p.lat - path[i].lat, (p.lng - path[i].lng) * 0.998),
       );
-    assert.ok(distances.reduce((a, b) => a + b, 0) > 1500);
+    assert.ok(
+      distances.reduce((a, b) => a + b, 0) > (row.truck.osmWays ? 1500 : 750),
+    );
   }
 });

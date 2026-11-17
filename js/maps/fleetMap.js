@@ -1,4 +1,4 @@
-import { school } from "./demoRoutes.js";
+import { school } from "./planning.js";
 import { operations } from "./operations.js";
 import { splitRoute } from "./geometry.js";
 import "../../css/fleet-map.css";
@@ -54,7 +54,8 @@ export function createFleetMap(host, mapId, select) {
     title: "EEEP Joaquim Nogueira",
   });
   let pickPoint;
-  const vehicles = operations.map((row) => {
+  const vehicles = new Map();
+  function add(row) {
     const segment = splitRoute(row);
     const icon = truckIcon(row, segment.westbound);
     const marker = new Marker({
@@ -72,14 +73,55 @@ export function createFleetMap(host, mapId, select) {
     });
     const listeners = [marker, driven, planned].map((layer) =>
       layer.addListener("click", (event) => {
-        if (pickPoint) pickPoint(event?.latLng?.toJSON() || segment.position);
+        if (pickPoint)
+          pickPoint(
+            event?.latLng?.toJSON() ||
+              marker.position?.toJSON?.() ||
+              segment.position,
+          );
         else select(row.vehicle);
       }),
     );
     return { row, marker, icon, driven, planned, listeners };
-  });
+  }
+  function sync(rows) {
+    for (const [id, v] of vehicles)
+      if (!rows.some((r) => r.vehicle === id)) {
+        v.listeners.forEach((l) => l.remove());
+        v.marker.map = null;
+        v.driven.setMap(null);
+        v.planned.setMap(null);
+        vehicles.delete(id);
+      }
+    for (const row of rows) {
+      let v = vehicles.get(row.vehicle);
+      if (!v) {
+        vehicles.set(row.vehicle, add(row));
+        continue;
+      }
+      if (
+        v.row.route === row.route &&
+        v.row.fraction === row.fraction &&
+        v.row.truck.status === row.truck.status &&
+        v.row.truck.color === row.truck.color
+      )
+        continue;
+      const split = splitRoute(row);
+      v.marker.position = split.position;
+      v.marker.title = row.vehicle + " · " + row.truck.status;
+      v.icon.style.setProperty("--vehicle", row.truck.color);
+      v.icon.dataset.westbound = String(split.westbound);
+      v.driven.setOptions({ path: split.driven, strokeColor: row.truck.color });
+      v.planned.setPath(split.planned);
+      v.row = row;
+    }
+  }
   function highlight(id) {
-    for (const { row, marker, icon, driven, planned } of vehicles) {
+    for (const v of vehicles.values()) {
+      const { row, marker, icon, driven, planned } = v;
+      const key = [id || "", row.truck.color].join("|");
+      if (v.styleKey === key) continue;
+      v.styleKey = key;
       const selected = row.vehicle === id;
       const opacity = !id || selected ? 1 : 0.48;
       marker.zIndex = selected ? 5 : 1;
@@ -107,16 +149,18 @@ export function createFleetMap(host, mapId, select) {
       });
     }
   }
+  sync(operations);
   highlight();
   return {
     map,
     highlight,
+    sync,
     setPickHandler(handler) {
       pickPoint = handler;
     },
     dispose() {
       campus.map = null;
-      for (const v of vehicles) {
+      for (const v of vehicles.values()) {
         v.listeners.forEach((l) => l.remove());
         v.marker.map = null;
         v.driven.setMap(null);
