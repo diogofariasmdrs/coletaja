@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Gestão de operações · ColetaJá</title>
     <script type="module" src="./dashboard.js"></script>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#173c2b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ColetaJá" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
   </head>
   <body>
     <aside class="rail">
@@ -35,6 +40,7 @@
         ><label
           >Velocidade
           <select id="speed">
+            <option value="0.5">0,5× · lento</option>
             <option value="1">1×</option>
             <option value="2">2×</option>
             <option value="4">4×</option>
@@ -144,10 +150,15 @@
     <dialog id="plan-dialog">
       <form id="plan-form">
         <h2>Organizar uma rota</h2>
-        <p>Escolha o bairro e as ruas por onde o caminhão deve passar na simulação.</p>
+        <p>
+          Escolha o bairro e as ruas por onde o caminhão deve passar na
+          simulação.
+        </p>
         <label>Nome<input required maxlength="70" name="title" /></label
         ><label>Região do percurso<select name="sector"></select></label
-        ><label>Percurso disponível<select name="path" required></select></label>
+        ><label
+          >Percurso disponível<select name="path" required></select
+        ></label>
         <p id="path-info"></p>
         <label>Caminhão<select name="truck"></select></label>
         <p role="alert" id="plan-error"></p>

@@ -1,5 +1,16 @@
-import { plannedRoutes, validatePlans } from "./planning.js";
-import { initialState, advance, statuses, types } from "./simulation.js";
+import {
+  plannedRoutes,
+  validatePlans,
+  templates,
+  stopCount,
+} from "./planning.js";
+import {
+  initialState,
+  advance,
+  statuses,
+  types,
+  resetPlayback,
+} from "./simulation.js";
 const key = "coletaja.operations.v3";
 let memory = initialState();
 // Acrescenta os circuitos interbairros uma vez, mesmo se os códigos padrão já estiverem ocupados.
@@ -34,7 +45,7 @@ function valid(s) {
     s.nextRoute >= 7 &&
     num(s.elapsed) &&
     (s.anchor === null || num(s.anchor)) &&
-    [1, 2, 4].includes(s.speed) &&
+    [0.5, 1, 2, 4].includes(s.speed) &&
     Array.isArray(s.vehicles) &&
     s.vehicles.length <= 12 &&
     s.vehicles.every(
@@ -104,6 +115,16 @@ function read() {
           localStorage.setItem(key, JSON.stringify(s));
         } catch {}
       }
+      if (s.routeRevision !== 2) {
+        for (const plan of s.plans)
+          if (templates.find((t) => t.key === plan.key)?.revision === 2)
+            plan.count = stopCount(plan.key);
+        resetPlayback(s);
+        s.routeRevision = 2;
+        try {
+          localStorage.setItem(key, JSON.stringify(s));
+        } catch {}
+      }
       return s;
     }
   } catch {}
@@ -111,13 +132,23 @@ function read() {
 }
 export function snapshot() {
   const s = read();
-  advance(s);
+  const now = Date.now();
+  const age = s.anchor === null ? 0 : now - s.anchor;
+  // A demonstração só avança enquanto uma página continua acompanhando o relógio.
+  if (typeof window !== "undefined" && age > 15000) s.anchor = null;
+  advance(s, now);
+  if (typeof window !== "undefined" && age > 5000) {
+    memory = structuredClone(s);
+    try {
+      localStorage.setItem(key, JSON.stringify(s));
+    } catch {}
+  }
   return s;
 }
 export function change(fn) {
   const s = snapshot();
   fn(s);
-  memory = s;
+  memory = structuredClone(s);
   try {
     localStorage.setItem(key, JSON.stringify(s));
   } catch {}
@@ -125,4 +156,18 @@ export function change(fn) {
 }
 export function restore() {
   return change((s) => Object.assign(s, initialState()));
+}
+
+export function setupPlaybackLifecycle() {
+  const pause = () => {
+    const s = snapshot();
+    if (s.anchor !== null)
+      change((state) => {
+        state.anchor = null;
+      });
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) pause();
+  });
+  window.addEventListener("pagehide", pause);
 }

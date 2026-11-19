@@ -1,8 +1,14 @@
+import { estimate, etaText, motion } from "../js/maps/eta.js";
 import { setupVehicleEditor } from "./vehicleEditor.js";
-import { plannedRoutes, blankRun } from "../js/maps/planning.js";
+import { plannedRoutes } from "../js/maps/planning.js";
 import { setupPlanner } from "./planner.js";
 import "./style.css";
-import { snapshot, change, restore } from "../js/maps/store.js";
+import {
+  snapshot,
+  change,
+  restore,
+  setupPlaybackLifecycle,
+} from "../js/maps/store.js";
 import {
   clock,
   rows,
@@ -10,7 +16,7 @@ import {
   types,
   condition,
   totals,
-  initialState,
+  resetPlayback,
   saveVehicle,
   removeVehicle,
   recordIssue,
@@ -18,6 +24,9 @@ import {
   log,
 } from "../js/maps/simulation.js";
 import { openMap, updateMap, focusMap } from "./map.js";
+const points = document.createElement("details");
+points.id = "point-arrivals";
+document.getElementById("selection").after(points);
 const $ = (id) => document.getElementById(id);
 const esc = (value) =>
   String(value ?? "").replace(
@@ -171,32 +180,42 @@ function draw() {
         .join("") || "Nenhum veículo em rota neste filtro.",
     );
     const row = filtered.find((r) => r.vehicle === selected);
+    const prediction = row && estimate(s, { routeCode: row.route });
     $("selection").textContent = row
-      ? row.truck.name +
+      ? row.vehicle +
         " · " +
-        row.progress +
-        "% · " +
-        (row.completed < row.stops.length
-          ? "Próximo ponto " + (row.completed + 1) + " de " + row.stops.length
-          : "Percurso concluído") +
-        (row.truck.status === "Pausado"
-          ? " · Previsão suspensa"
-          : " · Restam aproximadamente " +
-            Math.ceil(
-              ((1 - row.fraction) *
-                row.truck.duration *
-                (s.issues.some(
-                  (e) =>
-                    e.open &&
-                    e.vehicle === row.vehicle &&
-                    e.type === "Atraso na rota",
-                )
-                  ? 2
-                  : 1)) /
-                60,
-            ) +
-            " min simulados")
+        row.route +
+        (prediction.stop ? " · Próximo ponto " + prediction.stop : "") +
+        " · " +
+        etaText(prediction, s.speed) +
+        (prediction.meters !== undefined
+          ? " · " + Math.round(prediction.meters) + " m restantes"
+          : "") +
+        " · Atraso acumulado " +
+        Math.ceil((prediction.delay || 0) / 60) +
+        " min simulados. Previsão simulada — não é rastreamento real."
       : "Selecione um veículo para acompanhar o percurso.";
+    renderHTML(
+      "point-arrivals",
+      row
+        ? "<summary>Previsões dos pontos de coleta</summary>" +
+            row.stops
+              .map(
+                (label, i) =>
+                  "<p>" +
+                  esc(label) +
+                  " · " +
+                  esc(
+                    etaText(
+                      estimate(s, { routeCode: row.route, stop: i + 1 }),
+                      s.speed,
+                    ),
+                  ) +
+                  "</p>",
+              )
+              .join("")
+        : "",
+    );
     updateMap(filtered, selected);
     openMap(select);
   }
@@ -396,21 +415,13 @@ $("restart").onclick = () => {
     )
   )
     act((s) => {
-      const { vehicles, plans, nextRoute } = s;
-      Object.assign(s, initialState(), {
-        vehicles,
-        plans,
-        nextRoute,
-        runs: Object.fromEntries(plans.map((p) => [p.code, blankRun()])),
-      });
+      resetPlayback(s);
       log(s, "Percursos reiniciados");
     }, "Percursos reiniciados.");
 };
 $("restore").onclick = () => {
   if (
-    confirm(
-      "Restaurar a frota demonstrativa e apagar as alterações locais?",
-    )
+    confirm("Restaurar a frota demonstrativa e apagar as alterações locais?")
   ) {
     restore();
     notify("Demonstração restaurada.");
@@ -449,7 +460,7 @@ $("export").onclick = () => {
       r.region,
       s.vehicles.find((v) => v.route === r.code)?.id || "",
       Math.round(r.meters),
-      Math.round((r.meters * run.seconds) / r.duration),
+      Math.round(r.meters * motion(r, run.seconds).fraction),
       r.count,
       Math.floor((100 * run.seconds) / r.duration),
       Math.floor(s.elapsed),
@@ -470,6 +481,7 @@ $("export").onclick = () => {
 setupPlanner(act, draw);
 window.addEventListener("hashchange", navigate);
 window.addEventListener("storage", draw);
+setupPlaybackLifecycle();
 navigate();
 setInterval(() => {
   if (!document.hidden && isRunning) draw();

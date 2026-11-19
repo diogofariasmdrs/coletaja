@@ -16,6 +16,7 @@ import { snapshot, change, restore } from "../js/maps/store.js";
 test("simulação avança pela via, pausa, retoma, acelera e conclui", () => {
   const s = initialState();
   s.anchor = 1000;
+  s.speed=1;
   advance(s, 11000);
   assert.equal(s.elapsed, 10);
   const row = rows(s)[0];
@@ -28,7 +29,7 @@ test("simulação avança pela via, pausa, retoma, acelera e conclui", () => {
   s.speed = 4;
   advance(s, 22000);
   assert.equal(s.elapsed, 14);
-  advance(s, 2000000);
+  advance(s, 1000000000);
   assert.equal(totals(s).done, 8);
   assert.ok(s.runs["RT-01"].end > 0);
   assert.ok(totals(s).traveled <= totals(s).planned);
@@ -51,6 +52,7 @@ test("cadastro, atribuição, conflito, desativação e remoção", () => {
 test("ocorrências afetam deslocamento, atendimento e indicadores", () => {
   const s = initialState();
   s.anchor = 1000;
+  s.speed=1;
   recordIssue(s, "CJ-01", "Problema mecânico", "Motor");
   advance(s, 11000);
   assert.equal(s.runs["RT-01"].seconds, 0);
@@ -64,7 +66,7 @@ test("ocorrências afetam deslocamento, atendimento e indicadores", () => {
   assert.throws(() =>
     recordIssue(s, "CJ-01", "Ponto não atendido", "Repetido"),
   );
-  advance(s, 10000000);
+  advance(s, 1000000000);
   assert.equal(
     totals(s).served,
     routes.filter((_, i) => i !== 4).reduce((n, r) => n + r.count, 0) - 1,
@@ -81,7 +83,7 @@ test("persistência local, dados inválidos e restauração", () => {
   });
   assert.equal(snapshot().speed, 4);
   store.set("coletaja.operations.v3", "{}");
-  assert.equal(snapshot().speed, 1);
+  assert.equal(snapshot().speed, 0.5);
   restore();
   assert.equal(snapshot().vehicles.length, 9);
   delete globalThis.localStorage;

@@ -40,5 +40,4 @@ function setupParts() {
 }
 export function setupSections() {
   setupParts();
-  $(".page-foot time").textContent = new Date().getFullYear();
 }

@@ -1,3 +1,5 @@
+import { estimate, residentArrival, prepareArrival } from "./eta.js";
+import { rows } from "./simulation.js";
 import { coverage, plannedRoutes, school } from "./planning.js";
 import {
   parseLocation,
@@ -5,7 +7,7 @@ import {
   pathInDistrict,
   matchingPlaces,
 } from "./localSearch.js";
-import { snapshot } from "./store.js";
+import { snapshot, change } from "./store.js";
 import { setupSuggestions } from "./suggestions.js";
 import { searchStreets } from "./streetSearch.js";
 import { operations, refreshOperations } from "./operations.js";
@@ -35,6 +37,64 @@ export function setupAddress(select) {
     apiKey && import.meta.env.VITE_ENABLE_GEOCODING === "true",
   );
   const help = el("address-help");
+  const eta = document.createElement("div");
+  eta.className = "arrival-estimate";
+  eta.innerHTML =
+    '<span class="arrival-label"></span><div class="arrival-time"><strong></strong><span class="arrival-unit"></span></div><p class="arrival-context"></p>';
+  el("address-result").after(eta);
+  eta.hidden = true;
+  const prepare = document.createElement("button");
+  prepare.type = "button";
+  prepare.className = "prepare-passage";
+  prepare.textContent = "Preparar passagem neste ponto";
+  prepare.hidden = true;
+  eta.after(prepare);
+  prepare.onclick = () => {
+    try {
+      change((s) => prepareArrival(s, last.point));
+      last.prepared = true;
+      window.dispatchEvent(new Event("coleta-playback"));
+    } catch (error) {
+      eta.querySelector(".arrival-context").textContent = error.message;
+    }
+  };
+  function refreshEta() {
+    if (!last) {
+      eta.hidden = true;
+      prepare.hidden = true;
+      return;
+    }
+    const s = snapshot();
+    const result = estimate(s, {
+      point: last.point,
+      reliable: last.reliable === true,
+    });
+    if (last.reliable) {
+      const live = rows(s);
+      const { match } = coverage(last.point, s, live);
+      last.match = match;
+      const row = live.find((r) => r.vehicle === result.vehicle);
+      el("coverage-facts").hidden = !row;
+      if (row) {
+        el("coverage-vehicle").textContent =
+          row.vehicle + " · " + row.truck.status;
+        el("coverage-progress").textContent = row.progress + "%";
+        el("coverage-distance").textContent = Math.round(match.meters) + " m";
+      }
+    }
+
+    prepare.hidden = !last.reliable || !result.vehicle;
+    if (s.anchor !== null) last.prepared = false;
+    eta.hidden = false;
+    const display = residentArrival(result);
+    eta.dataset.state = result.status;
+    eta.querySelector(".arrival-label").textContent = display.label;
+    eta.querySelector("strong").textContent = display.value;
+    eta.querySelector(".arrival-unit").textContent = display.unit;
+    eta.querySelector(".arrival-context").textContent = last.prepared
+      ? "Passagem preparada. Clique em Iniciar ou Continuar simulação para acompanhar."
+      : display.detail;
+  }
   const mapBox = document.querySelector(".map-space");
   const pickBar = document.createElement("div");
   pickBar.className = "pick-bar";
@@ -70,6 +130,7 @@ export function setupAddress(select) {
     stopPicking();
     if (marker) marker.map = null;
     marker = last = null;
+    refreshEta();
     view.hidden = true;
     return ++request;
   }
@@ -100,16 +161,22 @@ export function setupAddress(select) {
     layers.map.panTo(last.point);
     layers.map.setZoom(last.zoom || 17);
   }
-  function display(point, label, precision = "") {
+  function display(point, label, precision = "", reliable = true) {
     stopPicking();
     refreshOperations();
     const { match, text } = coverage(point, snapshot(), operations);
-    last = { point, label, match };
+    last = {
+      point,
+      label,
+      match,
+      reliable: reliable && !precision.includes("Ponto de referência da rua"),
+    };
+    refreshEta();
     view.textContent = "Ver no mapa";
     if (match?.row.vehicle) {
       const { row, meters } = match;
       select(row.vehicle, false);
-      announce(label, text + " " + row.truck.name);
+      announce(label, "Rota " + row.route);
       el("coverage-vehicle").textContent =
         row.vehicle + " · " + row.truck.status;
       el("coverage-progress").textContent = row.progress + "%";
@@ -162,6 +229,7 @@ export function setupAddress(select) {
           label: district.name + " · referência do bairro",
           bounds: { west, south, east, north },
         };
+        refreshEta();
         view.textContent = "Ver bairro no mapa";
         layers?.highlight();
         announce(
@@ -384,6 +452,10 @@ export function setupAddress(select) {
           display(
             { lat: position.coords.latitude, lng: position.coords.longitude },
             "Sua localização",
+            position.coords.accuracy > 180
+              ? "Localização com baixa precisão"
+              : "",
+            position.coords.accuracy <= 180,
           );
       },
       (err) => {
@@ -470,5 +542,5 @@ export function setupAddress(select) {
   }
   setupSuggestions(el("address-input"), el("address-form"));
   attach(null);
-  return { attach, locate };
+  return { attach, locate, refreshEta };
 }

@@ -1,3 +1,6 @@
+import { setupPlayback } from "./playback.js";
+import { estimate, residentArrival } from "./eta.js";
+import { snapshot } from "./store.js";
 import { operations, refreshOperations } from "./operations.js";
 import { splitRoute } from "./geometry.js";
 import { setupAddress } from "./address.js";
@@ -11,10 +14,15 @@ export function setupTracking() {
     detail = section.querySelector(".tracking-detail");
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim(),
     mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
+  const arrival = document.createElement("div");
+  arrival.className = "tracking-arrival";
+  arrival.innerHTML = "<span>Próximo ponto</span><strong></strong>";
+  detail.append(arrival);
   let map,
     layers,
     selected = operations[0]?.vehicle;
   const address = setupAddress(select);
+  const playback = setupPlayback();
   const toggle = section.querySelector(".fleet-toggle");
   toggle.onclick = () =>
     toggle.setAttribute(
@@ -45,6 +53,7 @@ export function setupTracking() {
     if (!row) {
       detail.querySelector("b").textContent = "Sem veículos em rota";
       detail.querySelector("p").textContent = "";
+      arrival.hidden = true;
       return;
     }
     const vehicle = row.truck;
@@ -52,13 +61,14 @@ export function setupTracking() {
       b.setAttribute("aria-pressed", b.querySelector("b").textContent === id),
     );
     detail.querySelector("b").textContent = id + " · " + vehicle.status;
-    detail.querySelector("p").textContent =
-      row.route +
-      " · " +
-      vehicle.name +
-      " · " +
-      row.progress +
-      "% do percurso simulado";
+    detail.querySelector("p").textContent = row.route + " · " + vehicle.name;
+    const result = residentArrival(
+      estimate(snapshot(), { routeCode: row.route }),
+    );
+    arrival.hidden = false;
+    arrival.querySelector("strong").textContent = result.unit
+      ? "Em " + result.value + " " + result.unit
+      : result.value;
     layers?.highlight(id);
     if (focus && map) {
       map.panTo(splitRoute(row).position);
@@ -174,6 +184,8 @@ export function setupTracking() {
   function refresh() {
     if (document.hidden) return;
     refreshOperations();
+    playback.update();
+    address.refreshEta();
     const ids = operations.map((r) => r.vehicle + " " + r.truck.name).join();
     if (ids !== list.dataset.ids) {
       renderList();
@@ -190,10 +202,14 @@ export function setupTracking() {
     );
   }
   window.addEventListener("storage", refresh);
+  window.addEventListener("coleta-playback", refresh);
   setInterval(() => {
     if (
-      section.getBoundingClientRect().bottom > 0 &&
-      section.getBoundingClientRect().top < innerHeight
+      (section.getBoundingClientRect().bottom > 0 &&
+        section.getBoundingClientRect().top < innerHeight) ||
+      (document.getElementById("percurso").getBoundingClientRect().bottom > 0 &&
+        document.getElementById("percurso").getBoundingClientRect().top <
+          innerHeight)
     )
       refresh();
   }, 1000);

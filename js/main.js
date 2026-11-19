@@ -42,3 +42,5 @@ document.addEventListener("keydown", (event) => {
     mobileMenu.querySelector("summary").focus();
   }
 });
+
+import "./install.js";

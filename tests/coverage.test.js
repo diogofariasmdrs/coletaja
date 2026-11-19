@@ -20,7 +20,7 @@ test("proximidade usa o interior do segmento e respeita o limite de 180 m", () =
 });
 test("escola próxima e região distante sem cobertura", () => {
   assert.ok(findCoverage(school, operations));
-  assert.equal(findCoverage({ lat: -3.725, lng: -38.49 }, operations), null);
+  assert.equal(findCoverage({ lat: -4, lng: -39 }, operations), null);
 });
 test("frota e marcador usam o mesmo boletim e trajeto", () => {
   for (const row of operations) {

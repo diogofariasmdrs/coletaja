@@ -27,8 +27,8 @@ export function setupHero() {
     $("[data-play]").textContent = done
       ? "Reiniciar apresentação"
       : paused
-        ? "Continuar percurso"
-        : "Pausar percurso";
+        ? "Continuar animação"
+        : "Pausar animação";
     $("[data-explore]").textContent = exploring
       ? "Sair da exploração"
       : "Explorar em 3D";

@@ -49,7 +49,22 @@ export function pathMeasure(path) {
 export function splitRoute(row) {
   const path = row.truck.path,
     { lengths, meters } = pathMeasure(path);
-  let remaining = meters * (row.fraction ?? row.completed / row.stops.length);
+  const fraction = row.fraction ?? row.completed / row.stops.length;
+  if (fraction >= 1)
+    return {
+      position: path.at(-1),
+      westbound: path.at(-1).lng < path.at(-2).lng,
+      driven: [...path],
+      planned: [path.at(-1)],
+    };
+  if (fraction <= 0)
+    return {
+      position: path[0],
+      westbound: path[1].lng < path[0].lng,
+      driven: [path[0]],
+      planned: [...path],
+    };
+  let remaining = meters * fraction;
   for (let i = 0; i < lengths.length; i++) {
     if (remaining <= lengths[i] || i === lengths.length - 1) {
       const t = lengths[i] ? Math.min(1, remaining / lengths[i]) : 0;

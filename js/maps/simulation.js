@@ -1,3 +1,4 @@
+import { motion } from "./eta.js";
 import { routes, plannedRoutes, defaultPlans, blankRun } from "./planning.js";
 export { routes } from "./planning.js";
 export const statuses = ["Em coleta", "Em deslocamento", "Pausado"];
@@ -11,11 +12,12 @@ export function initialState() {
   return {
     version: 3,
     regionalRoutes: true,
+    routeRevision: 2,
     plans: structuredClone(defaultPlans),
     nextRoute: routes.length + 1,
     elapsed: 0,
     anchor: null,
-    speed: 1,
+    speed: 0.5,
     vehicles: routes.map((r, i) => ({
       id: r.id,
       name: "Compactador " + r.id,
@@ -62,8 +64,8 @@ export function condition(s, v) {
     return "Pausado";
   if (v.status !== "Pausado" && s.runs[v.route].seconds > 0) {
     const r = plannedRoutes(s).find((r) => r.code === v.route);
-    const phase = ((s.runs[v.route].seconds / r.duration) * r.count) % 1;
-    return phase > 0.75 ? "Em coleta" : "Em deslocamento";
+    const moving = motion(r, s.runs[v.route].seconds);
+    return moving.collecting ? "Em coleta" : "Em deslocamento";
   }
   return v.status;
 }
@@ -182,14 +184,14 @@ export function rows(s) {
     .map((v) => {
       const r = plannedRoutes(s).find((r) => r.code === v.route),
         run = s.runs[r.code],
-        fraction = run.seconds / r.duration;
+        fraction = motion(r, run.seconds).fraction;
       return {
         vehicle: v.id,
         route: r.code,
         truck: { ...r, id: v.id, color: v.color, status: condition(s, v) },
         fraction,
         progress: Math.floor(fraction * 100),
-        completed: Math.floor(fraction * r.count),
+        completed: motion(r, run.seconds).completed,
         stops: Array.from({ length: r.count }, (_, i) => "Ponto " + (i + 1)),
       };
     });
@@ -204,8 +206,8 @@ export function totals(s) {
     late = 0;
   for (const r of plannedRoutes(s)) {
     const run = s.runs[r.code],
-      f = run.seconds / r.duration,
-      passed = Math.floor(f * r.count);
+      f = motion(r, run.seconds).fraction,
+      passed = motion(r, run.seconds).completed;
     planned += r.meters;
     traveled += f * r.meters;
     served += passed - run.missed.filter((n) => n <= passed).length;
@@ -224,4 +226,14 @@ export function totals(s) {
     late,
     open: s.issues.filter((e) => e.open).length,
   };
+}
+
+export function resetPlayback(s) {
+  s.anchor = null;
+  s.elapsed = 0;
+  s.speed = 0.5;
+  s.runs = Object.fromEntries(s.plans.map((p) => [p.code, blankRun()]));
+  s.issues = [];
+  s.history = [];
+  log(s, "Demonstração reiniciada; escolha um endereço antes de iniciar.");
 }
