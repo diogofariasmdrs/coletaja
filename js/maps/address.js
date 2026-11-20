@@ -1,4 +1,6 @@
-import { estimate, residentArrival, prepareArrival } from "./eta.js";
+import { setupResident } from "./resident.js";
+import { statusLabel } from "./residentState.js";
+import { estimate, residentArrival } from "./eta.js";
 import { rows } from "./simulation.js";
 import { coverage, plannedRoutes, school } from "./planning.js";
 import {
@@ -7,7 +9,7 @@ import {
   pathInDistrict,
   matchingPlaces,
 } from "./localSearch.js";
-import { snapshot, change } from "./store.js";
+import { snapshot } from "./store.js";
 import { setupSuggestions } from "./suggestions.js";
 import { searchStreets } from "./streetSearch.js";
 import { operations, refreshOperations } from "./operations.js";
@@ -43,25 +45,11 @@ export function setupAddress(select) {
     '<span class="arrival-label"></span><div class="arrival-time"><strong></strong><span class="arrival-unit"></span></div><p class="arrival-context"></p>';
   el("address-result").after(eta);
   eta.hidden = true;
-  const prepare = document.createElement("button");
-  prepare.type = "button";
-  prepare.className = "prepare-passage";
-  prepare.textContent = "Preparar passagem neste ponto";
-  prepare.hidden = true;
-  eta.after(prepare);
-  prepare.onclick = () => {
-    try {
-      change((s) => prepareArrival(s, last.point));
-      last.prepared = true;
-      window.dispatchEvent(new Event("coleta-playback"));
-    } catch (error) {
-      eta.querySelector(".arrival-context").textContent = error.message;
-    }
-  };
+  const resident = setupResident(() => last);
   function refreshEta() {
     if (!last) {
+      resident.update(null, snapshot());
       eta.hidden = true;
-      prepare.hidden = true;
       return;
     }
     const s = snapshot();
@@ -69,6 +57,7 @@ export function setupAddress(select) {
       point: last.point,
       reliable: last.reliable === true,
     });
+    resident.update(result, s);
     if (last.reliable) {
       const live = rows(s);
       const { match } = coverage(last.point, s, live);
@@ -77,23 +66,19 @@ export function setupAddress(select) {
       el("coverage-facts").hidden = !row;
       if (row) {
         el("coverage-vehicle").textContent =
-          row.vehicle + " · " + row.truck.status;
+          row.vehicle + " · " + statusLabel(row.truck.status);
         el("coverage-progress").textContent = row.progress + "%";
         el("coverage-distance").textContent = Math.round(match.meters) + " m";
       }
     }
 
-    prepare.hidden = !last.reliable || !result.vehicle;
-    if (s.anchor !== null) last.prepared = false;
     eta.hidden = false;
     const display = residentArrival(result);
     eta.dataset.state = result.status;
     eta.querySelector(".arrival-label").textContent = display.label;
     eta.querySelector("strong").textContent = display.value;
     eta.querySelector(".arrival-unit").textContent = display.unit;
-    eta.querySelector(".arrival-context").textContent = last.prepared
-      ? "Passagem preparada. Clique em Iniciar ou Continuar simulação para acompanhar."
-      : display.detail;
+    eta.querySelector(".arrival-context").textContent = display.detail;
   }
   const mapBox = document.querySelector(".map-space");
   const pickBar = document.createElement("div");
@@ -130,6 +115,7 @@ export function setupAddress(select) {
     stopPicking();
     if (marker) marker.map = null;
     marker = last = null;
+    resident.reset();
     refreshEta();
     view.hidden = true;
     return ++request;
@@ -178,7 +164,7 @@ export function setupAddress(select) {
       select(row.vehicle, false);
       announce(label, "Rota " + row.route);
       el("coverage-vehicle").textContent =
-        row.vehicle + " · " + row.truck.status;
+        row.vehicle + " · " + statusLabel(row.truck.status);
       el("coverage-progress").textContent = row.progress + "%";
       el("coverage-distance").textContent = Math.round(meters) + " m";
       el("coverage-facts").hidden = false;

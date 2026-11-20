@@ -125,6 +125,11 @@ function read() {
           localStorage.setItem(key, JSON.stringify(s));
         } catch {}
       }
+      if (s.playbackDefaults !== 2) {
+        s.speed = 1;
+        s.playbackDefaults = 2;
+        try { localStorage.setItem(key, JSON.stringify(s)); } catch {}
+      }
       return s;
     }
   } catch {}

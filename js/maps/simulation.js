@@ -13,11 +13,12 @@ export function initialState() {
     version: 3,
     regionalRoutes: true,
     routeRevision: 2,
+    playbackDefaults: 2,
     plans: structuredClone(defaultPlans),
     nextRoute: routes.length + 1,
     elapsed: 0,
     anchor: null,
-    speed: 0.5,
+    speed: 1,
     vehicles: routes.map((r, i) => ({
       id: r.id,
       name: "Compactador " + r.id,
@@ -231,7 +232,7 @@ export function totals(s) {
 export function resetPlayback(s) {
   s.anchor = null;
   s.elapsed = 0;
-  s.speed = 0.5;
+  s.speed = 1;
   s.runs = Object.fromEntries(s.plans.map((p) => [p.code, blankRun()]));
   s.issues = [];
   s.history = [];

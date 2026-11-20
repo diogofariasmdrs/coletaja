@@ -1,10 +1,13 @@
+import { statusLabel } from "../js/maps/residentState.js";
 import { snapshot, change } from "../js/maps/store.js";
 import { saveVehicle, statuses } from "../js/maps/simulation.js";
 import { plannedRoutes, sectors } from "../js/maps/planning.js";
 const $ = (id) => document.getElementById(id);
 export function setupVehicleEditor(setOptions, notify, draw) {
   let editing = false;
-  $("vehicle").elements.status.append(...statuses.map((t) => new Option(t, t)));
+  $("vehicle").elements.status.append(
+    ...statuses.map((t) => new Option(statusLabel(t), t)),
+  );
   function edit(id) {
     const s = snapshot(),
       v = s.vehicles.find((v) => v.id === id),
@@ -24,16 +27,14 @@ export function setupVehicleEditor(setOptions, notify, draw) {
     f.color.value = v?.color || "#387c54";
     f.status.value = v?.status || statuses[0];
     function choices() {
-    const latest=snapshot();
+      const latest = snapshot();
       setOptions(f.route, [
         ["", "Sem rota"],
         ...plannedRoutes(latest)
           .filter((r) => r.active && r.region === f.sector.value)
           .filter(
             (r) =>
-              !latest.vehicles.some(
-                (t) => t.route === r.code && t.id !== id,
-              ),
+              !latest.vehicles.some((t) => t.route === r.code && t.id !== id),
           )
           .map((r) => [r.code, r.code + " · " + r.name]),
       ]);

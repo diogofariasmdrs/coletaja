@@ -1,3 +1,4 @@
+import { statusLabel } from "./residentState.js";
 import { school } from "./planning.js";
 import { operations } from "./operations.js";
 import { splitRoute } from "./geometry.js";
@@ -61,7 +62,9 @@ export function createFleetMap(host, mapId, select) {
     const marker = new Marker({
       map,
       position: segment.position,
-      title: [row.vehicle, row.truck.status, row.truck.name].join(" · "),
+      title: [row.vehicle, statusLabel(row.truck.status), row.truck.name].join(
+        " · ",
+      ),
       content: icon,
     });
     const line = { map, strokeColor: row.truck.color };
@@ -108,7 +111,7 @@ export function createFleetMap(host, mapId, select) {
         continue;
       const split = splitRoute(row);
       v.marker.position = split.position;
-      v.marker.title = row.vehicle + " · " + row.truck.status;
+      v.marker.title = row.vehicle + " · " + statusLabel(row.truck.status);
       v.icon.style.setProperty("--vehicle", row.truck.color);
       v.icon.dataset.westbound = String(split.westbound);
       v.driven.setOptions({ path: split.driven, strokeColor: row.truck.color });

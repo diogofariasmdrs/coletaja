@@ -1,0 +1,21 @@
+{
+  "vehicleId": "CJ-01",
+  "members": [
+    {
+      "name": "Diogo",
+      "role": "Motorista",
+      "photo": "motorista.webp"
+    },
+    {
+      "name": "Coletor 1",
+      "role": "Coletor",
+      "photo": "coletor-1.webp"
+    },
+    {
+      "name": "Coletor 2",
+      "role": "Coletor",
+      "photo": "coletor-2.webp"
+    }
+  ]
+}
+

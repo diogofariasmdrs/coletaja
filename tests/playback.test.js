@@ -6,35 +6,11 @@ import {
   resetPlayback,
   recordIssue,
 } from "../js/maps/simulation.js";
-import { prepareArrival, estimate, arrivalSeconds } from "../js/maps/eta.js";
+import { estimate, arrivalSeconds } from "../js/maps/eta.js";
 import { school, plannedRoutes } from "../js/maps/planning.js";
 import { splitRoute } from "../js/maps/geometry.js";
 import { snapshot } from "../js/maps/store.js";
 
-test("passagem preparada começa pausada e chega com cerca de um minuto no ritmo lento", () => {
-  const s = initialState(),
-    result = prepareArrival(s, school);
-  assert.equal(s.anchor, null);
-  assert.equal(s.speed, 0.5);
-  s.anchor = 1000;
-  const before = estimate(s, { point: school });
-  assert.equal(before.vehicle, result.vehicle);
-  assert.ok(before.wallSeconds > 0 && before.wallSeconds <= 61);
-  advance(s, 1000 + before.wallSeconds * 1000 + 1000);
-  assert.equal(estimate(s, { point: school }).status, "passing");
-  advance(s, 1000 + before.wallSeconds * 1000 + 11000);
-  assert.equal(estimate(s, { point: school }).status, "passing");
-});
-test("parada interrompe passagem e preparação não apaga ocorrência", () => {
-  const s = initialState();
-  prepareArrival(s, school);
-  s.anchor = 1000;
-  const e = estimate(s, { point: school });
-  advance(s, 1000 + e.wallSeconds * 1000 + 500);
-  recordIssue(s, e.vehicle, "Problema mecânico", "Teste");
-  assert.equal(estimate(s, { point: school }).status, "paused");
-  assert.throws(() => prepareArrival(s, school), /ocorrências/);
-});
 test("recomeçar preserva frota e rotas, limpa a viagem e não inicia automaticamente", () => {
   const s = initialState(),
     plans = structuredClone(s.plans),
@@ -44,7 +20,7 @@ test("recomeçar preserva frota e rotas, limpa a viagem e não inicia automatica
   resetPlayback(s);
   assert.equal(s.anchor, null);
   assert.equal(s.elapsed, 0);
-  assert.equal(s.speed, 0.5);
+  assert.equal(s.speed, 1);
   assert.deepEqual(s.plans, plans);
   assert.deepEqual(s.vehicles, vehicles);
   assert.ok(

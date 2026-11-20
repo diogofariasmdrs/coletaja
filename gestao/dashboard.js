@@ -1,3 +1,6 @@
+import { setupTeamEditor } from "./teamEditor.js";
+import { createTeamCard } from "../js/maps/teamCard.js";
+import { statusLabel } from "../js/maps/residentState.js";
 import { estimate, etaText, motion } from "../js/maps/eta.js";
 import { setupVehicleEditor } from "./vehicleEditor.js";
 import { plannedRoutes } from "../js/maps/planning.js";
@@ -118,12 +121,15 @@ function setOptions(el, pairs) {
 }
 $("filter").append(
   option("", "Todas"),
-  ...[...statuses, "Concluído"].map((s) => option(s, s)),
+  ...[...statuses, "Concluído"].map((s) => option(s, statusLabel(s))),
 );
 $("incident").elements.type.append(...types.map((t) => option(t, t)));
 
 let isRunning = false;
+const renderTeam = createTeamCard(document.querySelector(".roster"));
+setupTeamEditor();
 function draw() {
+  renderTeam(snapshot(), selected);
   const s = snapshot(),
     t = totals(s),
     active = rows(s),
@@ -148,7 +154,7 @@ function draw() {
       s.vehicles.filter((v) => condition(s, v) === status).length;
     metrics("metrics", [
       ["Frota total", s.vehicles.length],
-      ["Em coleta", count("Em coleta")],
+      ["Recolhendo resíduos", count("Em coleta")],
       ["Em deslocamento", count("Em deslocamento")],
       ["Pausados", count("Pausado")],
       ["Rotas em andamento", t.ongoing],
@@ -174,7 +180,7 @@ function draw() {
             "</b> · " +
             r.route +
             "<br>" +
-            esc(r.truck.status) +
+            esc(statusLabel(r.truck.status)) +
             "</button>",
         )
         .join("") || "Nenhum veículo em rota neste filtro.",
@@ -481,6 +487,7 @@ $("export").onclick = () => {
 setupPlanner(act, draw);
 window.addEventListener("hashchange", navigate);
 window.addEventListener("storage", draw);
+window.addEventListener("coleta-team", draw);
 setupPlaybackLifecycle();
 navigate();
 setInterval(() => {

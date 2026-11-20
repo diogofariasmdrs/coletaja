@@ -1,3 +1,5 @@
+import { createTeamCard } from "./teamCard.js";
+import { statusLabel } from "./residentState.js";
 import { setupPlayback } from "./playback.js";
 import { estimate, residentArrival } from "./eta.js";
 import { snapshot } from "./store.js";
@@ -18,6 +20,7 @@ export function setupTracking() {
   arrival.className = "tracking-arrival";
   arrival.innerHTML = "<span>Próximo ponto</span><strong></strong>";
   detail.append(arrival);
+  const renderTeam = createTeamCard(detail);
   let map,
     layers,
     selected = operations[0]?.vehicle;
@@ -49,6 +52,7 @@ export function setupTracking() {
   renderList();
   function select(id, focus = true) {
     selected = id;
+    renderTeam(snapshot(), id);
     const row = operations.find((r) => r.vehicle === id);
     if (!row) {
       detail.querySelector("b").textContent = "Sem veículos em rota";
@@ -60,7 +64,8 @@ export function setupTracking() {
     buttons.forEach((b) =>
       b.setAttribute("aria-pressed", b.querySelector("b").textContent === id),
     );
-    detail.querySelector("b").textContent = id + " · " + vehicle.status;
+    detail.querySelector("b").textContent =
+      id + " · " + statusLabel(vehicle.status);
     detail.querySelector("p").textContent = row.route + " · " + vehicle.name;
     const result = residentArrival(
       estimate(snapshot(), { routeCode: row.route }),
@@ -202,6 +207,7 @@ export function setupTracking() {
     );
   }
   window.addEventListener("storage", refresh);
+  window.addEventListener("coleta-team", refresh);
   window.addEventListener("coleta-playback", refresh);
   setInterval(() => {
     if (
@@ -212,6 +218,10 @@ export function setupTracking() {
           innerHeight)
     )
       refresh();
+    else if (!document.hidden) {
+      address.refreshEta();
+      playback.update();
+    }
   }, 1000);
   if (apiKey) {
     setStatus("waiting");

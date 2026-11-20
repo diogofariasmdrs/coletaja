@@ -2,7 +2,6 @@ import "../css/style.css";
 import { setupHero } from "./hero.js";
 import { setupMapTransition } from "./mapTransition.js";
 import { setupDesktopScroll } from "./desktopScroll.js";
-import { setupTracking } from "./maps/tracking.js";
 
 import { setupSections } from "./sections.js";
 import "../css/sections.css";
@@ -10,7 +9,24 @@ import "../css/sections.css";
 setupSections();
 setupDesktopScroll();
 setupMapTransition();
-setupTracking();
+const loadTracking = new IntersectionObserver(
+  async (entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    loadTracking.disconnect();
+    try {
+      const { setupTracking } = await import("./maps/tracking.js");
+      setupTracking();
+    } catch {
+      document.querySelector(".map-message strong").textContent =
+        "Não foi possível carregar a plataforma";
+      document.querySelector(".map-message p").textContent =
+        "Confira a conexão e recarregue a página.";
+    }
+  },
+  { rootMargin: "500px" },
+);
+loadTracking.observe(document.querySelector("#plataforma"));
+loadTracking.observe(document.querySelector("#percurso"));
 setupHero();
 for (const button of document.querySelectorAll(
   ".nav-demo,.hero-copy .primary",

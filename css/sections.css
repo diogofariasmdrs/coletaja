@@ -544,9 +544,19 @@
 .playback-actions select {width:auto;min-height:44px;padding:8px;border:1px solid #afbfaa;border-radius:6px;background:#fafcf6;font:inherit;}
 .playback-query {padding:20px 0;margin-top:20px;background:transparent;border-bottom:0;gap:14px;}
 .route-query .playback-actions label {margin:0;}
-.prepare-passage {display:block;background:transparent;border:1px solid #8dab94;color:#edf6e3;font:inherit;font-size:13px;padding:12px 16px;border-radius:6px;margin-bottom:24px;min-height:44px;}
-.prepare-passage[hidden] {display:none;}
 .arrival-estimate[data-state="passing"] {border-color:#b9dc8c;background:#264b36;margin-inline:-14px;padding-inline:14px;border-radius:6px;}
 .arrival-estimate[data-state="passing"] .arrival-time strong {color:#d4ecac;}
 .arrival-estimate[data-state="passing"] .arrival-label::before {content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#c4ed93;margin-right:8px;}
 @media(max-width:650px){.playback-bar {align-items:stretch;} .playback-actions {gap:8px;}.playback-query .playback-actions button {padding-inline:12px;}.playback-actions label {flex-basis:100%;}}
+.resident-tools {display:grid;gap:12px;margin:16px 0 22px;max-width:100%;}
+.resident-tools button,.resident-tools select {font:inherit;font-size:13px;min-height:44px;padding:10px 12px;border:1px solid #a8b9a5;border-radius:6px;background:#f4f7ef;color:#244d38;max-width:100%;}
+.resident-tools button:disabled {opacity:.5;}
+.resident-tools [hidden],.arrival-banner[hidden],.prepare-help[hidden] {display:none;}
+.resident-tools label {display:flex;align-items:center;flex-wrap:wrap;gap:12px;font-size:13px;}
+.resident-tools small {font-size:12px;line-height:1.6;color:#4a6251;}
+.resident-feedback {font-size:13px;margin:0;}
+.resident-feedback:empty {display:none;}
+.arrival-banner {position:absolute;z-index:6;left:16px;right:70px;top:72px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#193d2e;color:#f3f8e8;border:1px solid #b7d397;border-radius:8px;padding:12px 14px;box-shadow:0 3px 16px #16382722;max-width:480px;font-size:14px;}
+.arrival-banner button {flex-shrink:0;min-width:44px;min-height:44px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:24px;}
+.map-space.is-picking .arrival-banner {display:none;}
+@media(max-width:650px){.arrival-banner{left:10px;right:54px;top:72px;font-size:13px;}.resident-tools label{align-items:flex-start;flex-direction:column;}}

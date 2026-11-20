@@ -232,36 +232,3 @@ export function residentArrival(result) {
     detail: "Tempo restante até o ponto, no ritmo atual da demonstração.",
   };
 }
-
-export function prepareArrival(s, point) {
-  const ready = {
-    ...s,
-    runs: Object.fromEntries(
-      Object.entries(s.runs).map(([key, run]) => [
-        key,
-        { ...run, seconds: 0, end: null },
-      ]),
-    ),
-  };
-  const result = estimate(ready, { point });
-  if (!result.vehicle || result.targetFraction === undefined)
-    throw Error("Escolha um ponto próximo de uma rota com caminhão.");
-  if (s.issues.some((e) => e.open && e.vehicle === result.vehicle))
-    throw Error(
-      "Resolva as ocorrências deste caminhão no painel antes de preparar a passagem.",
-    );
-  const route = plannedRoutes(s).find((r) => r.code === result.route);
-  s.anchor = null;
-  s.speed = 0.5;
-  const run = s.runs[result.route];
-  run.seconds = Math.max(0, arrivalSeconds(route, result.targetFraction) - 30);
-  run.end = null;
-  run.delay = 0;
-  run.missed = [];
-  s.vehicles.find((v) => v.id === result.vehicle).status = "Em deslocamento";
-  s.history.unshift({
-    time: s.elapsed,
-    message: "Passagem preparada em " + result.route + " para apresentação.",
-  });
-  return result;
-}

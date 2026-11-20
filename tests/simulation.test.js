@@ -83,7 +83,7 @@ test("persistência local, dados inválidos e restauração", () => {
   });
   assert.equal(snapshot().speed, 4);
   store.set("coletaja.operations.v3", "{}");
-  assert.equal(snapshot().speed, 0.5);
+  assert.equal(snapshot().speed, 1);
   restore();
   assert.equal(snapshot().vehicles.length, 9);
   delete globalThis.localStorage;
